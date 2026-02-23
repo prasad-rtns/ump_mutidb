@@ -1,0 +1,11 @@
+node_modules
+dist
+.git
+.env
+*.log
+logs/
+coverage/
+.nyc_output
+*.md
+.DS_Store
+Thumbs.db
