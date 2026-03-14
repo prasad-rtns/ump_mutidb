@@ -22,6 +22,6 @@
 
     "types": ["node"]
   },
-  "include": ["src/**/*"],
+  "include": ["src/**/*", "src/middleware"],
   "exclude": ["node_modules", "dist", "tests"]
 }

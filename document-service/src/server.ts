@@ -3,22 +3,38 @@ dotenv.config();
 
 import http from 'http';
 import app from './app';
-import { connectPostgres, connectMongo, disconnectAll } from './database/connection';
+//import express from 'express';
+import cors from 'cors';
+import helmet from 'helmet';
+//import { connectPostgres, connectMongo, disconnectAll } from './database/connection';
+import { getPgPool, getMssqlPool, getOraclePool, getMongoClient, closeAllPools } from './database/adapters/db.connection';
 import { RedisClient } from '@prasad-rtns/shared';
 import logger from './database/logger';
 
 const PORT = parseInt(process.env.PORT || '6003');
 const HOST = process.env.HOST || '0.0.0.0';
+//const app = express();
+app.use(
+  helmet({
+    contentSecurityPolicy: false,
+  })
+);
+app.use(
+  cors({
+    origin: [process.env.FRONTEND_URL || 'http://localhost:8082'],
+    credentials: true,
+  })
+);
 
 async function startServer() {
   try {
     logger.info('Starting document-service...');
 
     // Connect to databases
-    await connectPostgres();
+    await getPgPool();
     logger.info('✅ PostgreSQL connected');
 
-    await connectMongo();
+    await getMongoClient();
     logger.info('✅ MongoDB connected');
 
     // Connect Redis
@@ -37,7 +53,7 @@ async function startServer() {
     const gracefulShutdown = async (signal: string) => {
       logger.info(`Received ${signal}, shutting down gracefully...`);
       server.close(async () => {
-        await disconnectAll();
+        await closeAllPools();
         await RedisClient.disconnect();
         logger.info('Server closed');
         process.exit(0);

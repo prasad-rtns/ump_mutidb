@@ -1,0 +1,331 @@
+openapi: 3.0.3
+info:
+  title: Document Service API
+  version: 1.0.0
+  description: Document upload, management and retrieval service
+
+servers:
+  - url: http://localhost:8082/api/v1/documents
+    description: Current host document service base path
+
+tags:
+  - name: Documents
+    description: Document management operations
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+
+    DocumentStatus:
+      type: string
+      enum: [pending, approved, rejected, archived]
+
+    StorageProviderKey:
+      type: string
+      enum: [s3, cloudinary, local]
+
+    Document:
+      type: object
+      properties:
+        id:
+          type: string
+          example: 9baf0f0c-8d5a-4f43-90d4-1b9f0d8e4f55
+        name:
+          type: string
+        originalName:
+          type: string
+        mimeType:
+          type: string
+        size:
+          type: integer
+        url:
+          type: string
+        key:
+          type: string
+        provider:
+          $ref: '#/components/schemas/StorageProviderKey'
+        publicId:
+          type: string
+        uploadedBy:
+          type: string
+        entityType:
+          type: string
+        entityId:
+          type: string
+        folder:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        metadata:
+          type: object
+          additionalProperties: true
+        status:
+          $ref: '#/components/schemas/DocumentStatus'
+        isDeleted:
+          type: boolean
+        deletedAt:
+          type: string
+          format: date-time
+        deletedBy:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    PaginatedDocuments:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Document'
+        total:
+          type: integer
+
+    UpdateStatusRequest:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          $ref: '#/components/schemas/DocumentStatus'
+
+paths:
+
+  /upload:
+    post:
+      tags: [Documents]
+      summary: Upload single document
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - file
+              properties:
+                file:
+                  type: string
+                  format: binary
+                folder:
+                  type: string
+                entityType:
+                  type: string
+                entityId:
+                  type: string
+                tags:
+                  type: array
+                  items:
+                    type: string
+                metadata:
+                  type: string
+                  description: JSON string
+      responses:
+        201:
+          description: Document uploaded successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Document'
+        401:
+          description: Unauthorized
+
+  /upload-bulk:
+    post:
+      tags: [Documents]
+      summary: Upload multiple documents (max 10)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - files
+              properties:
+                files:
+                  type: array
+                  items:
+                    type: string
+                    format: binary
+                folder:
+                  type: string
+      responses:
+        201:
+          description: Documents uploaded successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Document'
+        401:
+          description: Unauthorized
+
+  /:
+    get:
+      tags: [Documents]
+      summary: List documents (paginated)
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: page
+          schema:
+            type: integer
+            example: 1
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            example: 10
+        - in: query
+          name: uploadedBy
+          schema:
+            type: string
+        - in: query
+          name: entityType
+          schema:
+            type: string
+        - in: query
+          name: entityId
+          schema:
+            type: string
+        - in: query
+          name: status
+          schema:
+            $ref: '#/components/schemas/DocumentStatus'
+        - in: query
+          name: provider
+          schema:
+            $ref: '#/components/schemas/StorageProviderKey'
+      responses:
+        200:
+          description: Document list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedDocuments'
+        401:
+          description: Unauthorized
+
+  /{id}:
+    get:
+      tags: [Documents]
+      summary: Get document by ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Document details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Document'
+        404:
+          description: Document not found
+        401:
+          description: Unauthorized
+
+    delete:
+      tags: [Documents]
+      summary: Delete document (soft delete + storage cleanup)
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Document deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Document deleted successfully
+        401:
+          description: Unauthorized
+        404:
+          description: Not found
+
+  /{id}/download:
+    get:
+      tags: [Documents]
+      summary: Get signed download URL
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Signed URL
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  url:
+                    type: string
+        401:
+          description: Unauthorized
+
+  /{id}/status:
+    patch:
+      tags: [Documents]
+      summary: Update document status (admin, lead only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateStatusRequest'
+      responses:
+        200:
+          description: Status updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Document'
+        401:
+          description: Unauthorized
+        403:
+          description: Forbidden

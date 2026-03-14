@@ -3,7 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { users, roles, departments, designations } from '../../schemas/pg.schema';
 import { IUserDAL } from '../interfaces/user.dal.interface';
-import { User, CreateUserDTO, UpdateUserDTO, UserFilter } from '../../types';
+import { IUser, CreateUserDTO, UpdateUserDTO, UserFilter } from '../../modules/user/user.types';
 import { PaginatedResult } from '@prasad-rtns/shared';
 
 type PgDB = NodePgDatabase<Record<string, never>>;
@@ -12,17 +12,17 @@ export class PgUserDAL implements IUserDAL {
   constructor(private readonly db: PgDB) {}
 
   // ─── findById ────────────────────────────────────────────────────────────────
-  async findById(id: string): Promise<User | null> {
+  async findById(id: string): Promise<IUser | null> {
     const rows = await this.db
       .select()
       .from(users)
       .where(eq(users.id, id))
       .limit(1);
-    return (rows[0] as unknown as User) ?? null;
+    return (rows[0] as unknown as IUser) ?? null;
   }
 
   // ─── findByIdWithRelations ────────────────────────────────────────────────────
-  async findByIdWithRelations(id: string): Promise<User | null> {
+  async findByIdWithRelations(id: string): Promise<IUser | null> {
     const rows = await this.db
       .select({
         user: users,
@@ -39,31 +39,31 @@ export class PgUserDAL implements IUserDAL {
 
     if (!rows[0]) return null;
     const { user, role, department, designation } = rows[0];
-    return { ...user, role: role ?? undefined, department: department ?? undefined, designation: designation ?? undefined } as unknown as User;
+    return { ...user, role: role ?? undefined, department: department ?? undefined, designation: designation ?? undefined } as unknown as IUser;
   }
 
   // ─── findByEmail ──────────────────────────────────────────────────────────────
-  async findByEmail(email: string): Promise<User | null> {
+  async findByEmail(email: string): Promise<IUser | null> {
     const rows = await this.db
       .select()
       .from(users)
       .where(eq(users.email, email.toLowerCase()))
       .limit(1);
-    return (rows[0] as unknown as User) ?? null;
+    return (rows[0] as unknown as IUser) ?? null;
   }
 
   // ─── findByUsername ───────────────────────────────────────────────────────────
-  async findByUsername(username: string): Promise<User | null> {
+  async findByUsername(username: string): Promise<IUser | null> {
     const rows = await this.db
       .select()
       .from(users)
       .where(eq(users.username, username))
       .limit(1);
-    return (rows[0] as unknown as User) ?? null;
+    return (rows[0] as unknown as IUser) ?? null;
   }
 
   // ─── findByEmailOrUsername ────────────────────────────────────────────────────
-  async findByEmailOrUsername(identifier: string): Promise<User | null> {
+  async findByEmailOrUsername(identifier: string): Promise<IUser | null> {
     const rows = await this.db
       .select()
       .from(users)
@@ -74,16 +74,16 @@ export class PgUserDAL implements IUserDAL {
         )
       )
       .limit(1);
-    return (rows[0] as unknown as User) ?? null;
+    return (rows[0] as unknown as IUser) ?? null;
   }
 
   // ─── findAll ──────────────────────────────────────────────────────────────────
-  async findAll(opts: UserFilter): Promise<PaginatedResult<User>> {
+  async findAll(opts: UserFilter): Promise<PaginatedResult<IUser>> {
     return this.findFiltered(opts);
   }
 
   // ─── findFiltered ─────────────────────────────────────────────────────────────
-  async findFiltered(filter: UserFilter): Promise<PaginatedResult<User>> {
+  async findFiltered(filter: UserFilter): Promise<PaginatedResult<IUser>> {
     const {
       page = 1, limit = 10, search,
       sortBy = 'createdAt', sortOrder = 'desc',
@@ -129,30 +129,30 @@ export class PgUserDAL implements IUserDAL {
     ]);
 
     const mapped = data.map(({ user, role, department, designation }) =>
-      ({ ...user, role: role ?? undefined, department: department ?? undefined, designation: designation ?? undefined } as unknown as User)
+      ({ ...user, role: role ?? undefined, department: department ?? undefined, designation: designation ?? undefined } as unknown as IUser)
     );
 
     return { data: mapped, total: Number(total) };
   }
 
   // ─── create ───────────────────────────────────────────────────────────────────
-  async create(data: CreateUserDTO): Promise<User> {
+  async create(data: CreateUserDTO): Promise<IUser> {
     const now = new Date();
     const rows = await this.db
       .insert(users)
       .values({ id: uuidv4(), ...data, createdAt: now, updatedAt: now })
       .returning();
-    return rows[0] as unknown as User;
+    return rows[0] as unknown as IUser;
   }
 
   // ─── update ───────────────────────────────────────────────────────────────────
-  async update(id: string, data: UpdateUserDTO): Promise<User | null> {
+  async update(id: string, data: UpdateUserDTO): Promise<IUser | null> {
     const rows = await this.db
       .update(users)
       .set({ ...data, updatedAt: new Date() })
       .where(eq(users.id, id))
       .returning();
-    return (rows[0] as unknown as User) ?? null;
+    return (rows[0] as unknown as IUser) ?? null;
   }
 
   // ─── delete (hard) ────────────────────────────────────────────────────────────
@@ -193,7 +193,7 @@ export class PgUserDAL implements IUserDAL {
   }
 
   // ─── changeStatus ─────────────────────────────────────────────────────────────
-  async changeStatus(id: string, status: User['status'], updatedBy: string): Promise<boolean> {
+  async changeStatus(id: string, status: IUser['status'], updatedBy: string): Promise<boolean> {
     const rows = await this.db
       .update(users)
       .set({ status, updatedBy, updatedAt: new Date() })

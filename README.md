@@ -312,3 +312,25 @@ curl -X POST http://localhost:3003/api/documents/upload-bulk \
 | GET | `/api/documents/:id/download` | JWT |
 | PATCH | `/api/documents/:id/status` | Admin/Lead |
 | DELETE | `/api/documents/:id` | JWT |
+
+
+## SQL Generate
+`npx drizzle-kit generate --config=drizzle.pg.config.ts`
+This creates SQL file inside:src/database/migrations/pg
+
+## Apply Migration - For production-safe workflow:
+`npx drizzle-kit migrate --config=drizzle.pg.config.ts`
+
+## Alternative (Dev Only Fast Way)
+If you are in development and don't care about migration files:
+`npx drizzle-kit push --config=drizzle.pg.config.ts`
+
+## DB Push
+`npx drizzle-kit push --config=drizzle.pg.config.ts`
+
+## Create .env.local file 
+```
+set -a
+source .env.local
+npx drizzle-kit push --config=drizzle.pg.config.ts
+```

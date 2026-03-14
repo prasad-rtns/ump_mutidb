@@ -1,7 +1,7 @@
 import { DatabaseType } from '@prasad-rtns/shared';
 import { connectMongo } from '../database/connection';
 import { drizzle as pgDrizzle } from 'drizzle-orm/node-postgres';
-import { getPgPool, getMssqlPool, getOraclePool } from '../database/adapters/db.connection';
+import { getPgPool, getMssqlPool, getOraclePool, getMongoClient } from '../database/adapters/db.connection';
 
 // ── PostgreSQL ─────────────────────────────────────────────────────────────────
 import { PgUserDAL }                                    from './pg/user.dal.pg';
@@ -45,7 +45,7 @@ export class DALFactory {
 
       // ─── MongoDB ─────────────────────────────────────────────────────────────
       case 'mongodb': {
-        const { collections } = await connectMongo();
+        const { collections } = await getMongoClient();
         return {
           user:        new MongoUserDAL(collections),
           session:     new MongoSessionDAL(collections),

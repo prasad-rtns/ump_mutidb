@@ -1,6 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import { IDocumentDAL } from '../interfaces/document.dal.interface';
-import { Document, CreateDocumentDTO, DocumentFilter, UpdateDocumentStatusDTO } from '../../types';
+import { Document, CreateDocumentDTO, DocumentFilter, UpdateDocumentStatusDTO } from '../../modules/document_upload/document.types';
 import { DocumentCollections } from '../../database/mongo.schema';
 import { PaginatedResult } from '@prasad-rtns/shared';
 

@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import { getDbConnection } from '../database/connection';
 import { auditLogs } from '../schemas/pg.schema';
+import { DatabaseType } from '@prasad-rtns/shared'; 
 
 export const auditLog = (action: string, entity: string) => {
   return async (req: Request, _res: Response, next: NextFunction) => {
@@ -43,10 +44,11 @@ export const writeAuditLog = async (
       return;
     }
 
-    const { db } = conn as { db: ReturnType<typeof import('drizzle-orm/node-postgres').drizzle> };
-    await (db as ReturnType<typeof import('drizzle-orm/node-postgres').drizzle>)
-      .insert(auditLogs)
-      .values({
+    if (conn.type !== 'postgres') {
+      throw new Error('Audit log requires Postgres');
+    }
+
+    await conn.db.insert(auditLogs).values({
         id: uuidv4(),
         userId,
         action,

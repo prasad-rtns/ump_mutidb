@@ -8,10 +8,10 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-ump_user}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ump_pass}
-      POSTGRES_DB: ${POSTGRES_DB:-ump_db}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ump_pass_2024}
+      POSTGRES_DB: ${POSTGRES_DB:-ump_auth}
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./scripts/init-postgres.sql:/docker-entrypoint-initdb.d/init.sql
@@ -22,50 +22,6 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-
-  mysql:
-    image: mysql:8.0
-    container_name: ump_mysql
-    restart: unless-stopped
-    environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root_pass}
-      MYSQL_DATABASE: ${MYSQL_DB:-ump_db}
-      MYSQL_USER: ${MYSQL_USER:-ump_user}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-ump_pass}
-    ports:
-      - "3306:3306"
-    volumes:
-      - mysql_data:/var/lib/mysql
-      - ./scripts/init-mysql.sql:/docker-entrypoint-initdb.d/init.sql
-    networks:
-      - ump_network
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "${MYSQL_USER:-ump_user}", "-p${MYSQL_PASSWORD:-ump_pass}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  mssql:
-    image: mcr.microsoft.com/mssql/server:2022-latest
-    container_name: ump_mssql
-    restart: unless-stopped
-    environment:
-      ACCEPT_EULA: Y
-      SA_PASSWORD: ${MSSQL_SA_PASSWORD:-Ump_Pass@2024}
-      MSSQL_DB: ${MSSQL_DB:-ump_db}
-    ports:
-      - "1435:1433"
-    volumes:
-      - mssql_data:/var/opt/mssql
-      - ./scripts/init-mssql.sql:/scripts/init-mssql.sql
-    networks:
-      - ump_network
-    healthcheck:
-      test: ["CMD-SHELL", "/opt/mssql-tools/bin/sqlcmd -S localhost,1435 -U sa -P '${MSSQL_SA_PASSWORD:-Ump_Pass@2024}' -Q 'SELECT 1'"]
-      interval: 15s
-      timeout: 10s
-      retries: 5
-
   mongodb:
     image: mongo:7.0
     container_name: ump_mongodb
@@ -86,30 +42,6 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-
-
-  oracle:
-    image: container-registry.oracle.com/database/express:21.3.0-xe
-    container_name: ump_oracle
-    restart: unless-stopped
-    environment:
-      ORACLE_PWD: ${ORACLE_SYS_PASSWORD:-OracleP@ss2024}
-      ORACLE_CHARACTERSET: AL32UTF8
-    ports:
-      - "1521:1521"
-      - "5500:5500"
-    volumes:
-      - oracle_data:/opt/oracle/oradata
-      - ./scripts/init-oracle.sql:/docker-entrypoint-initdb.d/init-oracle.sql
-    networks:
-      - ump_network
-    healthcheck:
-      test: ["CMD-SHELL", "sqlplus -L sys/${ORACLE_SYS_PASSWORD:-OracleP@ss2024}@//localhost:1521/XE as sysdba <<< 'SELECT 1 FROM DUAL;' | grep -q '1'"]
-      interval: 60s
-      timeout: 30s
-      start_period: 120s
-      retries: 5
-
   redis:
     image: redis:7-alpine
     container_name: ump_redis
@@ -141,13 +73,13 @@ services:
       - "6001:6001"
     depends_on:
       postgres: { condition: service_healthy }
-      mysql: { condition: service_healthy }
       mongodb: { condition: service_healthy }
       redis: { condition: service_healthy }
     networks:
       - ump_network
     volumes:
-      - auth_logs:/app/logs
+    - ./auth-service/logs:/app/logs
+#      - ./logs/auth-service:/app/logs
   
   master-service:
     build:
@@ -158,18 +90,18 @@ services:
     environment:
       NODE_ENV: ${NODE_ENV:-production}
       REDIS_URL: redis://:${REDIS_PASSWORD:-redis_pass_2024}@redis:6379
-      AUTH_SERVICE_URL: http://auth-service:6001
+      AUTH_SERVICE_URL: http://auth-service:6001/api/v1
     ports:
       - "6002:6002"
     depends_on:
       postgres: { condition: service_healthy }
-      mysql: { condition: service_healthy }
       redis: { condition: service_healthy }
       auth-service: { condition: service_started }
     networks:
       - ump_network
     volumes:
-      - master_logs:/app/logs
+      - ./master-service/logs:/app/logs
+#      - ./logs/master-service:/app/logs
 
   document-service:
     build:
@@ -180,7 +112,7 @@ services:
     environment:
       NODE_ENV: ${NODE_ENV:-production}
       REDIS_URL: redis://:${REDIS_PASSWORD:-redis_pass_2024}@redis:6379
-      AUTH_SERVICE_URL: http://auth-service:6001
+      AUTH_SERVICE_URL: http://auth-service:6001/api/v1
     ports:
       - "6003:6003"
     depends_on:
@@ -192,6 +124,8 @@ services:
     volumes:
       - doc_uploads:/app/uploads
       - doc_logs:/app/logs
+      - ./document-service/logs:/app/logs
+#      - ./logs/document-service:/app/logs
   # ─── API Gateway ─────────────────────────────────────────────────────────────
   nginx:
     image: nginx:alpine
@@ -212,15 +146,12 @@ services:
 
 volumes:
   postgres_data:
-  mysql_data:
-  mssql_data:
   mongo_data:
   redis_data:
   auth_logs:
   master_logs:
   doc_uploads:
   doc_logs:
-  oracle_data:
 
 networks:
   ump_network:

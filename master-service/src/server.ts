@@ -1,32 +1,38 @@
 import dotenv from 'dotenv';
 dotenv.config();
-
+import cors from 'cors';
+import helmet from 'helmet';
 import http from 'http';
-let app: any;
+import app from './app';
+import { getPgPool, getMssqlPool, getOraclePool, getMongoClient, closeAllPools } from './database/adapters/db.connection';
 
-try {
-  app = require('./app').default;
-} catch (err) {
-  console.error("App initialization failed:", err);
-  process.exit(1);
-}
-
-import { connectPostgres, connectMongo, disconnectAll } from './database/connection';
 import { RedisClient } from '@prasad-rtns/shared';
 import logger from './database/logger';
 
-const PORT = parseInt(process.env.PORT || '6002');
+const PORT = parseInt(process.env.PORT || '6001');
 const HOST = process.env.HOST || '0.0.0.0';
+
+app.use(
+  helmet({
+    contentSecurityPolicy: false,
+  })
+);
+app.use(
+  cors({
+    origin: [process.env.FRONTEND_URL || 'http://localhost:8082'],
+    credentials: true,
+  })
+);
 
 async function startServer() {
   try {
     logger.info('Starting master-service...');
 
     // Connect to databases
-    await connectPostgres();
+    await getPgPool();
     logger.info('✅ PostgreSQL connected');
 
-    await connectMongo();
+    await getMongoClient();
     logger.info('✅ MongoDB connected');
 
     // Connect Redis
@@ -45,7 +51,7 @@ async function startServer() {
     const gracefulShutdown = async (signal: string) => {
       logger.info(`Received ${signal}, shutting down gracefully...`);
       server.close(async () => {
-        await disconnectAll();
+        await closeAllPools();
         await RedisClient.disconnect();
         logger.info('Server closed');
         process.exit(0);

@@ -59,6 +59,13 @@ export const multerErrorHandler = (
     return ResponseUtil.error(res, err.message, 415);
   }
 
+  if (err) {
+    return res.status(500).json({
+      success: false,
+      message: err.message
+    });
+  }
+  
   return next(err);
 };
 

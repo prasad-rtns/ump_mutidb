@@ -1,5 +1,7 @@
 import { DatabaseType } from '@prasad-rtns/shared';
 import logger from '../logger';
+import { MongoCollections } from '../../schemas/mongo.schema';
+import { MongoClient, Db } from 'mongodb';
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  Import DB drivers lazily to avoid loading unused drivers at startup
@@ -120,20 +122,47 @@ export async function getOraclePool() {
 }
 
 // ─── MongoDB ──────────────────────────────────────────────────────────────────
-export async function getMongoClient() {
-  if (_mongoClient) return _mongoClient;
+export async function getMongoClient(): Promise<{
+  client: MongoClient;
+  db: Db;
+  collections: MongoCollections;
+}> {
+  if (_mongoClient) {
+    const db = _mongoClient.db(process.env.MONGO_DB || 'ump_auth');
+    return {
+      client: _mongoClient,
+      db,
+      collections: new MongoCollections(db),
+    };
+  }
+
   const { MongoClient } = await import('mongodb');
-  const url = process.env.MONGO_URL
-    || `mongodb://${process.env.MONGO_USER}:${process.env.MONGO_PASSWORD}@${process.env.MONGO_HOST || 'localhost'}:${process.env.MONGO_PORT || 27017}/${process.env.MONGO_DB}?authSource=admin`;
+
+  const url =
+    process.env.MONGO_URL ||
+    `mongodb://${process.env.MONGO_USER}:${process.env.MONGO_PASSWORD}@${process.env.MONGO_HOST || 'localhost'}:${process.env.MONGO_PORT || 27017}/${process.env.MONGO_DB}?authSource=admin`;
+
   _mongoClient = new MongoClient(url, {
     maxPoolSize: 10,
     minPoolSize: 2,
     connectTimeoutMS: 10_000,
-    socketTimeoutMS:  30_000,
+    socketTimeoutMS: 30_000,
   });
+
   await _mongoClient.connect();
+
+  const db = _mongoClient.db(process.env.MONGO_DB || 'ump_auth');
+  const collections = new MongoCollections(db);
+
+  await collections.createIndexes();
+
   logger.info('MongoDB client connected');
-  return _mongoClient;
+
+  return {
+    client: _mongoClient,
+    db,
+    collections,
+  };
 }
 
 // ─── Health check for any pool ────────────────────────────────────────────────
@@ -167,8 +196,8 @@ export async function checkDbHealth(dbType: DatabaseType): Promise<{ ok: boolean
         break;
       }
       case 'mongodb': {
-        const client = await getMongoClient();
-        await client.db('admin').command({ ping: 1 });
+        const { db } = await getMongoClient();
+        await db.command({ ping: 1 });
         break;
       }
     }

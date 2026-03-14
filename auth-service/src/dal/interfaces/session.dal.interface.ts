@@ -1,9 +1,9 @@
-import { Session, CreateSessionDTO } from '../../types';
+import { ISession, CreateSessionDTO } from '../../modules/common/common.types';
 
 export interface ISessionDAL {
-  create(data: CreateSessionDTO): Promise<Session>;
-  findByRefreshToken(token: string): Promise<Session | null>;
-  findActiveByUserId(userId: string): Promise<Session[]>;
+  create(data: CreateSessionDTO): Promise<ISession>;
+  findByRefreshToken(token: string): Promise<ISession | null>;
+  findActiveByUserId(userId: string): Promise<ISession[]>;
   revokeByToken(token: string): Promise<void>;
   revokeAllByUserId(userId: string): Promise<void>;
   deleteExpired(): Promise<number>;

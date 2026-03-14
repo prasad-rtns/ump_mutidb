@@ -8,8 +8,44 @@ import { masterSchema } from '../schemas/pg.schema';
 import { MongoCollections } from '../schemas/mongo.schema';
 import logger from './logger';
 
-type PgDB = ReturnType<typeof pgDrizzle>;
-type MysqlDB = ReturnType<typeof mysqlDrizzle>;
+// ─────────────────────────────────────────────────────────
+// Drizzle DB Types
+// ─────────────────────────────────────────────────────────
+
+import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
+import type { MySql2Database } from 'drizzle-orm/mysql2';
+
+type PgDB = NodePgDatabase<typeof masterSchema>;
+type MysqlDB = MySql2Database<Record<string, unknown>>;
+
+// ─────────────────────────────────────────────────────────
+// Discriminated Union Types (CRITICAL FIX)
+// ─────────────────────────────────────────────────────────
+
+type PgConnection = {
+  type: 'postgres';
+  db: PgDB;
+};
+
+type MysqlConnection = {
+  type: 'mysql';
+  db: MysqlDB;
+};
+
+type MongoConnection = {
+  type: 'mongodb';
+  db: Db;
+  collections: MongoCollections;
+};
+
+export type DbConnection =
+  | PgConnection
+  | MysqlConnection
+  | MongoConnection;
+
+// ─────────────────────────────────────────────────────────
+// Internal Connection State
+// ─────────────────────────────────────────────────────────
 
 interface ConnectionState {
   pgPool?: PgPool;
@@ -23,28 +59,44 @@ interface ConnectionState {
 
 const state: ConnectionState = {};
 
-// ─── PostgreSQL ───────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────
+// PostgreSQL
+// ─────────────────────────────────────────────────────────
+
 export async function connectPostgres(): Promise<PgDB> {
   if (state.pgDB) return state.pgDB;
+
   state.pgPool = new PgPool({
     host: process.env.POSTGRES_HOST || 'localhost',
     port: parseInt(process.env.POSTGRES_PORT || '5432'),
     database: process.env.POSTGRES_DB || 'ump_auth',
     user: process.env.POSTGRES_USER || 'ump_user',
     password: process.env.POSTGRES_PASSWORD || '',
-    ssl: process.env.POSTGRES_SSL === 'true' ? { rejectUnauthorized: false } : undefined,
+    ssl:
+      process.env.POSTGRES_SSL === 'true'
+        ? { rejectUnauthorized: false }
+        : undefined,
     min: 2,
     max: 10,
   });
-  state.pgPool.on('error', (err) => logger.error('PG pool error', { error: err.message }));
+
+  state.pgPool.on('error', (err) =>
+    logger.error('PG pool error', { error: err.message })
+  );
+
   state.pgDB = pgDrizzle(state.pgPool, { schema: masterSchema });
+
   logger.info('PostgreSQL connected');
   return state.pgDB;
 }
 
-// ─── MySQL ────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────
+// MySQL
+// ─────────────────────────────────────────────────────────
+
 export async function connectMysql(): Promise<MysqlDB> {
   if (state.mysqlDB) return state.mysqlDB;
+
   state.mysqlPool = mysql.createPool({
     host: process.env.MYSQL_HOST || 'localhost',
     port: parseInt(process.env.MYSQL_PORT || '3306'),
@@ -55,52 +107,102 @@ export async function connectMysql(): Promise<MysqlDB> {
     connectionLimit: 10,
     enableKeepAlive: true,
   });
-  state.mysqlDB = mysqlDrizzle(state.mysqlPool);
+
+state.mysqlDB = mysqlDrizzle(state.mysqlPool) as unknown as MysqlDB;
   logger.info('MySQL connected');
   return state.mysqlDB;
 }
 
-// ─── MongoDB ──────────────────────────────────────────────────────────────────
-export async function connectMongo(): Promise<{ db: Db; collections: MongoCollections }> {
+// ─────────────────────────────────────────────────────────
+// MongoDB
+// ─────────────────────────────────────────────────────────
+
+export async function connectMongo(): Promise<{
+  db: Db;
+  collections: MongoCollections;
+}> {
   if (state.mongoDB && state.mongoCollections) {
     return { db: state.mongoDB, collections: state.mongoCollections };
   }
+
   const url = `mongodb://${process.env.MONGO_USER}:${process.env.MONGO_PASSWORD}@${process.env.MONGO_HOST || 'localhost'}:${process.env.MONGO_PORT || 27017}/${process.env.MONGO_DB}?authSource=admin`;
+
   state.mongoClient = new MongoClient(url, {
     serverSelectionTimeoutMS: 5000,
     maxPoolSize: 10,
     minPoolSize: 2,
   });
+
   await state.mongoClient.connect();
-  state.mongoDB = state.mongoClient.db(process.env.MONGO_DB || 'ump_auth');
+
+  state.mongoDB = state.mongoClient.db(
+    process.env.MONGO_DB || 'ump_auth'
+  );
+
   state.mongoCollections = new MongoCollections(state.mongoDB);
+
   await state.mongoCollections.createIndexes();
+
   logger.info('MongoDB connected');
-  return { db: state.mongoDB, collections: state.mongoCollections };
+
+  return {
+    db: state.mongoDB,
+    collections: state.mongoCollections,
+  };
 }
 
-// ─── Get connection by type ───────────────────────────────────────────────────
-export async function getDbConnection(type: DatabaseType) {
+// ─────────────────────────────────────────────────────────
+// Get DB Connection (Discriminated Union Safe)
+// ─────────────────────────────────────────────────────────
+
+export async function getDbConnection(
+  type: DatabaseType
+): Promise<DbConnection> {
   switch (type) {
-    case 'postgres': return { type: 'postgres', db: await connectPostgres() };
-    case 'mysql': return { type: 'mysql', db: await connectMysql() };
-    case 'mongodb': return { type: 'mongodb', ...(await connectMongo()) };
+    case 'postgres':
+      return {
+        type: 'postgres',
+        db: await connectPostgres(),
+      };
+
+    case 'mysql':
+      return {
+        type: 'mysql',
+        db: await connectMysql(),
+      };
+
+    case 'mongodb': {
+      const { db, collections } = await connectMongo();
+      return {
+        type: 'mongodb',
+        db,
+        collections,
+      };
+    }
+
+    case 'mssql':
+    case 'oracle':
+      throw new Error(`${type} not implemented`);
+
     default:
-      logger.warn(`DB type ${type} not configured, falling back to postgres`);
-      return { type: 'postgres', db: await connectPostgres() };
+      throw new Error(`Unsupported DB type: ${type}`);
   }
 }
 
-// ─── Health checks ────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────
+// Health Check
+// ─────────────────────────────────────────────────────────
+
 export async function checkDbHealth(): Promise<Record<string, boolean>> {
   const results: Record<string, boolean> = {};
-  
+
   try {
-    const pg = await connectPostgres();
-    await (pg as unknown as { execute: (q: string) => Promise<unknown> }).execute?.('SELECT 1');
+    await connectPostgres();
     results.postgres = true;
-  } catch { results.postgres = false; }
-  
+  } catch {
+    results.postgres = false;
+  }
+
   try {
     if (state.mysqlPool) {
       const conn = await state.mysqlPool.getConnection();
@@ -110,8 +212,10 @@ export async function checkDbHealth(): Promise<Record<string, boolean>> {
     } else {
       results.mysql = false;
     }
-  } catch { results.mysql = false; }
-  
+  } catch {
+    results.mysql = false;
+  }
+
   try {
     if (state.mongoClient) {
       await state.mongoClient.db('admin').command({ ping: 1 });
@@ -119,14 +223,30 @@ export async function checkDbHealth(): Promise<Record<string, boolean>> {
     } else {
       results.mongodb = false;
     }
-  } catch { results.mongodb = false; }
-  
+  } catch {
+    results.mongodb = false;
+  }
+
   return results;
 }
 
-// ─── Graceful disconnect ──────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────
+// Graceful Shutdown
+// ─────────────────────────────────────────────────────────
+
 export async function disconnectAll(): Promise<void> {
-  if (state.pgPool) { await state.pgPool.end(); logger.info('PostgreSQL disconnected'); }
-  if (state.mysqlPool) { await state.mysqlPool.end(); logger.info('MySQL disconnected'); }
-  if (state.mongoClient) { await state.mongoClient.close(); logger.info('MongoDB disconnected'); }
+  if (state.pgPool) {
+    await state.pgPool.end();
+    logger.info('PostgreSQL disconnected');
+  }
+
+  if (state.mysqlPool) {
+    await state.mysqlPool.end();
+    logger.info('MySQL disconnected');
+  }
+
+  if (state.mongoClient) {
+    await state.mongoClient.close();
+    logger.info('MongoDB disconnected');
+  }
 }

@@ -3,7 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { countries, states, cities, categories, tags, documentTypes, systemSettings } from '../../schemas/pg.schema';
 import { ICountryDAL, IStateDAL, ICityDAL, ICategoryDAL, ITagDAL, IDocumentTypeDAL, ISettingDAL } from '../interfaces/master.dal.interfaces';
-import type { Country, State, City, Category, Tag, DocumentType, SystemSetting, CreateCountryDTO, CreateStateDTO, CreateCityDTO, CreateCategoryDTO, CreateTagDTO, CreateDocumentTypeDTO, UpsertSettingDTO, UpdateCountryDTO, UpdateCategoryDTO } from '../../types';
+import type { Country, State, City, Category, Tag, DocumentType, SystemSetting, CreateCountryDTO, CreateStateDTO, CreateCityDTO, CreateCategoryDTO, CreateTagDTO, CreateDocumentTypeDTO, UpsertSettingDTO, UpdateCountryDTO, UpdateCategoryDTO } from '../../modules/coredata/coredata.types';
 
 type PgDB = NodePgDatabase<Record<string, never>>;
 const now = () => new Date();

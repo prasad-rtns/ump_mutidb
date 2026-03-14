@@ -3,36 +3,36 @@ import { v4 as uuidv4 } from 'uuid';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { sessions } from '../../schemas/pg.schema';
 import { ISessionDAL } from '../interfaces/session.dal.interface';
-import { Session, CreateSessionDTO } from '../../types';
+import { ISession, CreateSessionDTO } from '../../modules/common/common.types';
 
 type PgDB = NodePgDatabase<Record<string, never>>;
 
 export class PgSessionDAL implements ISessionDAL {
   constructor(private readonly db: PgDB) {}
 
-  async create(data: CreateSessionDTO): Promise<Session> {
+  async create(data: CreateSessionDTO): Promise<ISession> {
     const rows = await this.db
       .insert(sessions)
       .values({ id: uuidv4(), ...(data as any), isRevoked: false, createdAt: new Date() })
       .returning();
-    return rows[0] as unknown as Session;
+    return rows[0] as unknown as ISession;
   }
 
-  async findByRefreshToken(token: string): Promise<Session | null> {
+  async findByRefreshToken(token: string): Promise<ISession | null> {
     const rows = await this.db
       .select()
       .from(sessions)
       .where(and(eq(sessions.refreshToken, token), eq(sessions.isRevoked, false)))
       .limit(1);
-    return (rows[0] as unknown as Session) ?? null;
+    return (rows[0] as unknown as ISession) ?? null;
   }
 
-  async findActiveByUserId(userId: string): Promise<Session[]> {
+  async findActiveByUserId(userId: string): Promise<ISession[]> {
     const rows = await this.db
       .select()
       .from(sessions)
       .where(and(eq(sessions.userId, userId), eq(sessions.isRevoked, false)));
-    return rows as unknown as Session[];
+    return rows as unknown as ISession[];
   }
 
   async revokeByToken(token: string): Promise<void> {
