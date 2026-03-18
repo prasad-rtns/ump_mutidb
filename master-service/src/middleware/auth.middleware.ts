@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
+import { ResponseUtil } from '@prasad-rtns/shared';
 import axios, { AxiosError } from 'axios';
 import { JwtUtil, JwtPayload } from '@prasad-rtns/shared';
 import logger from '../database/logger';
@@ -7,6 +8,16 @@ dotenv.config();
 
 const AUTH_SERVICE_URL =
   process.env.AUTH_SERVICE_URL || 'http://auth-service:6001/api/v1';
+
+const getUserRoleSlug = (user: Request['user']): string | undefined => {
+  const role = user?.role as string | { slug?: string } | undefined;
+
+  if (typeof role === 'string') {
+    return role;
+  }
+
+  return role?.slug;
+};
 
 export const userAuthenticate = async (
   req: Request,
@@ -22,6 +33,10 @@ export const userAuthenticate = async (
       req.headers.authorization.startsWith('Bearer ')
     ) {
       token = req.headers.authorization.split(' ')[1];
+      logger.info("--- verifyAccessToken ---:", JSON.stringify(token));   // 👈 DEBUG
+      const decoded = JwtUtil.verifyAccessToken(token);
+      logger.info("---0 Decoded token 0---:", decoded);   // 👈 DEBUG
+      logger.info("-- JSON.stringify token --:", JSON.stringify(decoded));   // 👈 DEBUG
     }
 
     if (!token) {
@@ -59,9 +74,9 @@ export const userAuthenticate = async (
         }
       );
 
-      if (response.data) {
-        logger.info(`User authenticated from auth-service: ${JSON.stringify(response.data)}`);
-        req.user = response.data; // depends on your response structure
+      if (response.data?.data) {
+        logger.info(`User authenticated from auth-service: ${JSON.stringify(response.data.data)}`);
+        req.user = response.data.data;
         next();
         return;
       }
@@ -121,4 +136,23 @@ export const userAuthenticate = async (
       message: 'Server error',
     });
   }
+};
+
+export const authorizemaster = (...roles: string[]) => {
+  return (req: Request, res: Response, next: NextFunction): void => {
+    if (!req.user) {
+      ResponseUtil.unauthorized(res);
+      return;
+    }
+    const userRole = getUserRoleSlug(req.user);
+    logger.info("req.user:", req?.user);
+    logger.info("User role:", userRole ?? req?.user?.role);
+    logger.info("Required userRole:", userRole);
+    if (!userRole || !roles.includes(userRole)) {
+      ResponseUtil.forbidden(res, `${JSON.stringify(userRole)} -- Access denied. Required roles: ${roles.join(', ')}`);
+      return;
+    }
+    logger.info(`${JSON.stringify(userRole)} -- Required roles:`, roles);
+    next();
+  };
 };

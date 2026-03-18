@@ -5,14 +5,14 @@ import {
   CategoryController, TagController, DocumentTypeController, SettingsController,
 } from './coredata.controller';
 import { authenticate, authorize } from '@prasad-rtns/shared';
-import { userAuthenticate } from '../../middleware/auth.middleware';
+import { userAuthenticate, authorizemaster } from '../../middleware/auth.middleware';
 
 const router = Router();
 //router.use(userAuthenticate);
 // Countries
 router.get   ('/countries',       asyncHandler(CountryController.list));
-router.get   ('/countries/:id',   asyncHandler(CountryController.getById));
-router.post  ('/countries',       userAuthenticate, authorize('admin'), asyncHandler(CountryController.create));
+//router.post  ('/countries',       userAuthenticate, authorize('admin'), asyncHandler(CountryController.create));
+router.post  ('/countries',       userAuthenticate, authorizemaster('admin'), asyncHandler(CountryController.create));
 router.put   ('/countries/:id',   userAuthenticate, authorize('admin'), asyncHandler(CountryController.update));
 
 // States
