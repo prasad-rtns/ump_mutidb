@@ -18,7 +18,7 @@ services:
     networks:
       - ump_network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-ump_user}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-ump_user} -d ${POSTGRES_DB:-ump_auth}"]
       interval: 10s
       timeout: 5s
       retries: 5

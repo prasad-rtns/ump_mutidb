@@ -59,9 +59,18 @@ export const userAuthenticate = async (
         }
       );
 
-      if (response.data) {
-        logger.info(`User authenticated from auth-service: ${JSON.stringify(response.data)}`);
-        req.user = response.data; // depends on your response structure
+      if (response.data?.data) {
+        const userData = response.data.data;
+        logger.info(`User authenticated from auth-service: ${JSON.stringify(userData)}`);
+        req.user = {
+          ...userData,
+          role:
+            typeof userData.role === 'string'
+              ? userData.role
+              : userData.role?.slug ?? payload.role,
+          permissions: userData.permissions || userData.role?.permissions || payload.permissions || [],
+        };
+        logger.info(`User req.user: ${JSON.stringify(req.user)}`);
         next();
         return;
       }
