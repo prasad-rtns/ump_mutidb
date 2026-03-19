@@ -2,7 +2,9 @@ import { v4 as uuidv4 } from 'uuid';
 import type { Pool as OraPool } from 'oracledb';
 import { ISessionDAL } from '../interfaces/session.dal.interface';
 import { IRoleDAL, IDepartmentDAL, IDesignationDAL } from '../interfaces/role-dept-desig.dal.interface';
-import { Session, Role, Department, Designation, CreateSessionDTO, CreateRoleDTO, UpdateRoleDTO, CreateDepartmentDTO, UpdateDepartmentDTO, CreateDesignationDTO, UpdateDesignationDTO } from '../../types';
+import { IRole, IDepartment, IDesignation, CreateRoleDTO, UpdateRoleDTO, CreateDepartmentDTO, UpdateDepartmentDTO, CreateDesignationDTO, UpdateDesignationDTO } from '../../modules/master/master.types';
+import { ISession, CreateSessionDTO } from '../../modules/common/common.types';
+
 
 const FMT = 2; // OUT_FORMAT_OBJECT
 
@@ -16,7 +18,7 @@ export class OracleSessionDAL implements ISessionDAL {
     finally { await c.close(); }
   }
 
-  async create(data: CreateSessionDTO): Promise<Session> {
+  async create(data: CreateSessionDTO): Promise<ISession> {
     const id = uuidv4();
     await this.q(`INSERT INTO sessions (id, user_id, refresh_token, device_info, ip_address, user_agent, is_revoked, expires_at, created_at)
                   VALUES (:id, :userId, :refreshToken, :deviceInfo, :ipAddress, :userAgent, 0, :expiresAt, SYSDATE)`,
@@ -26,12 +28,12 @@ export class OracleSessionDAL implements ISessionDAL {
     return this._mapSession(r.rows![0]);
   }
 
-  async findByRefreshToken(token: string): Promise<Session | null> {
+  async findByRefreshToken(token: string): Promise<ISession | null> {
     const r = await this.q<Record<string, unknown>>('SELECT * FROM sessions WHERE refresh_token = :token AND is_revoked = 0', { token });
     return r.rows?.[0] ? this._mapSession(r.rows[0]) : null;
   }
 
-  async findActiveByUserId(userId: string): Promise<Session[]> {
+  async findActiveByUserId(userId: string): Promise<ISession[]> {
     const r = await this.q<Record<string, unknown>>('SELECT * FROM sessions WHERE user_id = :userId AND is_revoked = 0', { userId });
     return (r.rows ?? []).map(r => this._mapSession(r));
   }
@@ -49,7 +51,7 @@ export class OracleSessionDAL implements ISessionDAL {
     return r.rowsAffected ?? 0;
   }
 
-  private _mapSession(row: Record<string, unknown>): Session {
+  private _mapSession(row: Record<string, unknown>): ISession {
     const g = (k: string) => row[k] ?? row[k.toUpperCase()];
     return {
       id:           g('id') as string,
@@ -65,6 +67,7 @@ export class OracleSessionDAL implements ISessionDAL {
   }
 }
 
+
 // ─── Role DAL ─────────────────────────────────────────────────────────────────
 export class OracleRoleDAL implements IRoleDAL {
   constructor(private readonly pool: OraPool) {}
@@ -75,22 +78,22 @@ export class OracleRoleDAL implements IRoleDAL {
     finally { await c.close(); }
   }
 
-  async findAll(activeOnly = true): Promise<Role[]> {
+  async findAll(activeOnly = true): Promise<IRole[]> {
     const r = await this.q<Record<string, unknown>>(`SELECT * FROM roles ${activeOnly ? 'WHERE is_active = 1' : ''}`);
     return (r.rows ?? []).map(this._mapRole);
   }
 
-  async findById(id: string): Promise<Role | null> {
+  async findById(id: string): Promise<IRole | null> {
     const r = await this.q<Record<string, unknown>>('SELECT * FROM roles WHERE id = :id', { id });
     return r.rows?.[0] ? this._mapRole(r.rows[0]) : null;
   }
 
-  async findBySlug(slug: Role['slug']): Promise<Role | null> {
+  async findBySlug(slug: IRole['slug']): Promise<IRole | null> {
     const r = await this.q<Record<string, unknown>>('SELECT * FROM roles WHERE slug = :slug', { slug });
     return r.rows?.[0] ? this._mapRole(r.rows[0]) : null;
   }
 
-  async create(data: CreateRoleDTO): Promise<Role> {
+  async create(data: CreateRoleDTO): Promise<IRole> {
     const id = uuidv4();
     await this.q(`INSERT INTO roles (id, name, slug, description, permissions, is_active, created_at, updated_at)
                   VALUES (:id, :name, :slug, :description, :permissions, 1, SYSDATE, SYSDATE)`,
@@ -98,7 +101,7 @@ export class OracleRoleDAL implements IRoleDAL {
     return (await this.findById(id))!;
   }
 
-  async update(id: string, data: UpdateRoleDTO): Promise<Role | null> {
+  async update(id: string, data: UpdateRoleDTO): Promise<IRole | null> {
     const sets: string[] = ['updated_at = SYSDATE'];
     const binds: Record<string, unknown> = { id };
     if (data.name        !== undefined) { binds.name = data.name; sets.push('name = :name'); }
@@ -114,12 +117,12 @@ export class OracleRoleDAL implements IRoleDAL {
     return (r.rowsAffected ?? 0) > 0;
   }
 
-  private _mapRole(row: Record<string, unknown>): Role {
+  private _mapRole(row: Record<string, unknown>): IRole {
     const g = (k: string) => row[k] ?? row[k.toUpperCase()];
     let permissions: string[] = [];
     try { permissions = JSON.parse(g('permissions') as string ?? '[]'); } catch { /* ignore */ }
     return {
-      id: g('id') as string, name: g('name') as string, slug: g('slug') as Role['slug'],
+      id: g('id') as string, name: g('name') as string, slug: g('slug') as IRole['slug'],
       description: (g('description') ?? null) as string | null, permissions,
       isActive: Boolean(g('is_active')), createdAt: g('created_at') as Date, updatedAt: g('updated_at') as Date,
     };
@@ -136,27 +139,27 @@ export class OracleDepartmentDAL implements IDepartmentDAL {
     finally { await c.close(); }
   }
 
-  async findAll(activeOnly = true): Promise<Department[]> {
+  async findAll(activeOnly = true): Promise<IDepartment[]> {
     const r = await this.q<Record<string, unknown>>(`SELECT * FROM departments ${activeOnly ? 'WHERE is_active = 1' : ''}`);
     return (r.rows ?? []).map(row => this._map(row));
   }
 
-  async findById(id: string): Promise<Department | null> {
+  async findById(id: string): Promise<IDepartment | null> {
     const r = await this.q<Record<string, unknown>>('SELECT * FROM departments WHERE id = :id', { id });
     return r.rows?.[0] ? this._map(r.rows[0]) : null;
   }
 
-  async findByCode(code: string): Promise<Department | null> {
+  async findByCode(code: string): Promise<IDepartment | null> {
     const r = await this.q<Record<string, unknown>>('SELECT * FROM departments WHERE code = :code', { code });
     return r.rows?.[0] ? this._map(r.rows[0]) : null;
   }
 
-  async findChildren(parentId: string): Promise<Department[]> {
+  async findChildren(parentId: string): Promise<IDepartment[]> {
     const r = await this.q<Record<string, unknown>>('SELECT * FROM departments WHERE parent_id = :parentId', { parentId });
     return (r.rows ?? []).map(row => this._map(row));
   }
 
-  async create(data: CreateDepartmentDTO): Promise<Department> {
+  async create(data: CreateDepartmentDTO): Promise<IDepartment> {
     const id = uuidv4();
     await this.q(`INSERT INTO departments (id, name, code, parent_id, manager_id, description, is_active, created_at, updated_at)
                   VALUES (:id, :name, :code, :parentId, :managerId, :description, 1, SYSDATE, SYSDATE)`,
@@ -164,7 +167,7 @@ export class OracleDepartmentDAL implements IDepartmentDAL {
     return (await this.findById(id))!;
   }
 
-  async update(id: string, data: UpdateDepartmentDTO): Promise<Department | null> {
+  async update(id: string, data: UpdateDepartmentDTO): Promise<IDepartment | null> {
     const sets: string[] = ['updated_at = SYSDATE'];
     const binds: Record<string, unknown> = { id };
     const fm: Record<string, string> = { name: 'name', code: 'code', parentId: 'parent_id', managerId: 'manager_id', description: 'description' };
@@ -181,7 +184,7 @@ export class OracleDepartmentDAL implements IDepartmentDAL {
     return (r.rowsAffected ?? 0) > 0;
   }
 
-  private _map(row: Record<string, unknown>): Department {
+  private _map(row: Record<string, unknown>): IDepartment {
     const g = (k: string) => row[k] ?? row[k.toUpperCase()];
     return {
       id: g('id') as string, name: g('name') as string, code: g('code') as string,
@@ -202,12 +205,12 @@ export class OracleDesignationDAL implements IDesignationDAL {
     finally { await c.close(); }
   }
 
-  async findAll(activeOnly = true): Promise<Designation[]> {
+  async findAll(activeOnly = true): Promise<IDesignation[]> {
     const r = await this.q<Record<string, unknown>>(`SELECT * FROM designations ${activeOnly ? 'WHERE is_active = 1' : ''}`);
     return (r.rows ?? []).map(row => this._map(row));
   }
 
-  async findByDepartment(departmentId: string, activeOnly = true): Promise<Designation[]> {
+  async findByDepartment(departmentId: string, activeOnly = true): Promise<IDesignation[]> {
     const r = await this.q<Record<string, unknown>>(
       `SELECT * FROM designations WHERE department_id = :deptId ${activeOnly ? 'AND is_active = 1' : ''}`,
       { deptId: departmentId }
@@ -215,17 +218,17 @@ export class OracleDesignationDAL implements IDesignationDAL {
     return (r.rows ?? []).map(row => this._map(row));
   }
 
-  async findById(id: string): Promise<Designation | null> {
+  async findById(id: string): Promise<IDesignation | null> {
     const r = await this.q<Record<string, unknown>>('SELECT * FROM designations WHERE id = :id', { id });
     return r.rows?.[0] ? this._map(r.rows[0]) : null;
   }
 
-  async findByCode(code: string): Promise<Designation | null> {
+  async findByCode(code: string): Promise<IDesignation | null> {
     const r = await this.q<Record<string, unknown>>('SELECT * FROM designations WHERE code = :code', { code });
     return r.rows?.[0] ? this._map(r.rows[0]) : null;
   }
 
-  async create(data: CreateDesignationDTO): Promise<Designation> {
+  async create(data: CreateDesignationDTO): Promise<IDesignation> {
     const id = uuidv4();
     await this.q(`INSERT INTO designations (id, name, code, department_id, level, description, is_active, created_at, updated_at)
                   VALUES (:id, :name, :code, :deptId, :level, :description, 1, SYSDATE, SYSDATE)`,
@@ -233,7 +236,7 @@ export class OracleDesignationDAL implements IDesignationDAL {
     return (await this.findById(id))!;
   }
 
-  async update(id: string, data: UpdateDesignationDTO): Promise<Designation | null> {
+  async update(id: string, data: UpdateDesignationDTO): Promise<IDesignation | null> {
     const sets: string[] = ['updated_at = SYSDATE'];
     const binds: Record<string, unknown> = { id };
     const fm: Record<string, string> = { name: 'name', code: 'code', departmentId: 'department_id', level: 'level', description: 'description' };
@@ -250,7 +253,7 @@ export class OracleDesignationDAL implements IDesignationDAL {
     return (r.rowsAffected ?? 0) > 0;
   }
 
-  private _map(row: Record<string, unknown>): Designation {
+  private _map(row: Record<string, unknown>): IDesignation {
     const g = (k: string) => row[k] ?? row[k.toUpperCase()];
     return {
       id: g('id') as string, name: g('name') as string, code: g('code') as string,

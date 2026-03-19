@@ -2,13 +2,14 @@ import { v4 as uuidv4 } from 'uuid';
 import type { ConnectionPool } from 'mssql';
 import { ISessionDAL } from '../interfaces/session.dal.interface';
 import { IRoleDAL, IDepartmentDAL, IDesignationDAL } from '../interfaces/role-dept-desig.dal.interface';
-import { Session, Role, Department, Designation, CreateSessionDTO, CreateRoleDTO, UpdateRoleDTO, CreateDepartmentDTO, UpdateDepartmentDTO, CreateDesignationDTO, UpdateDesignationDTO } from '../../types';
+import { IRole, IDepartment, IDesignation, CreateRoleDTO, UpdateRoleDTO, CreateDepartmentDTO, UpdateDepartmentDTO, CreateDesignationDTO, UpdateDesignationDTO } from '../../modules/master/master.types';
+import { ISession, CreateSessionDTO } from '../../modules/common/common.types';
 
 // ─── Session DAL ──────────────────────────────────────────────────────────────
 export class MssqlSessionDAL implements ISessionDAL {
   constructor(private readonly pool: ConnectionPool) {}
 
-  async create(data: CreateSessionDTO): Promise<Session> {
+  async create(data: CreateSessionDTO): Promise<ISession> {
     const id = uuidv4();
     await this.pool.request()
       .input('id', id).input('userId', data.userId).input('refreshToken', data.refreshToken)
@@ -16,19 +17,19 @@ export class MssqlSessionDAL implements ISessionDAL {
       .input('userAgent', data.userAgent ?? null).input('expiresAt', data.expiresAt)
       .query(`INSERT INTO sessions (id, user_id, refresh_token, device_info, ip_address, user_agent, is_revoked, expires_at, created_at)
               VALUES (@id, @userId, @refreshToken, @deviceInfo, @ipAddress, @userAgent, 0, @expiresAt, GETUTCDATE())`);
-    const r = await this.pool.request().input('id', id).query<Session>('SELECT * FROM sessions WHERE id = @id');
+    const r = await this.pool.request().input('id', id).query<ISession>('SELECT * FROM sessions WHERE id = @id');
     return r.recordset[0];
   }
 
-  async findByRefreshToken(token: string): Promise<Session | null> {
+  async findByRefreshToken(token: string): Promise<ISession | null> {
     const r = await this.pool.request().input('token', token)
-      .query<Session>('SELECT * FROM sessions WHERE refresh_token = @token AND is_revoked = 0');
+      .query<ISession>('SELECT * FROM sessions WHERE refresh_token = @token AND is_revoked = 0');
     return r.recordset[0] ?? null;
   }
 
-  async findActiveByUserId(userId: string): Promise<Session[]> {
+  async findActiveByUserId(userId: string): Promise<ISession[]> {
     const r = await this.pool.request().input('userId', userId)
-      .query<Session>('SELECT * FROM sessions WHERE user_id = @userId AND is_revoked = 0');
+      .query<ISession>('SELECT * FROM sessions WHERE user_id = @userId AND is_revoked = 0');
     return r.recordset;
   }
 
@@ -53,23 +54,23 @@ export class MssqlSessionDAL implements ISessionDAL {
 export class MssqlRoleDAL implements IRoleDAL {
   constructor(private readonly pool: ConnectionPool) {}
 
-  async findAll(activeOnly = true): Promise<Role[]> {
+  async findAll(activeOnly = true): Promise<IRole[]> {
     const where = activeOnly ? 'WHERE is_active = 1' : '';
-    const r = await this.pool.request().query<Role>(`SELECT * FROM roles ${where}`);
+    const r = await this.pool.request().query<IRole>(`SELECT * FROM roles ${where}`);
     return r.recordset;
   }
 
-  async findById(id: string): Promise<Role | null> {
-    const r = await this.pool.request().input('id', id).query<Role>('SELECT * FROM roles WHERE id = @id');
+  async findById(id: string): Promise<IRole | null> {
+    const r = await this.pool.request().input('id', id).query<IRole>('SELECT * FROM roles WHERE id = @id');
     return r.recordset[0] ?? null;
   }
 
-  async findBySlug(slug: Role['slug']): Promise<Role | null> {
-    const r = await this.pool.request().input('slug', slug).query<Role>('SELECT * FROM roles WHERE slug = @slug');
+  async findBySlug(slug: IRole['slug']): Promise<IRole | null> {
+    const r = await this.pool.request().input('slug', slug).query<IRole>('SELECT * FROM roles WHERE slug = @slug');
     return r.recordset[0] ?? null;
   }
 
-  async create(data: CreateRoleDTO): Promise<Role> {
+  async create(data: CreateRoleDTO): Promise<IRole> {
     const id = uuidv4();
     await this.pool.request()
       .input('id', id).input('name', data.name).input('slug', data.slug)
@@ -80,7 +81,7 @@ export class MssqlRoleDAL implements IRoleDAL {
     return (await this.findById(id))!;
   }
 
-  async update(id: string, data: UpdateRoleDTO): Promise<Role | null> {
+  async update(id: string, data: UpdateRoleDTO): Promise<IRole | null> {
     const sets: string[] = ['updated_at = GETUTCDATE()'];
     const req = this.pool.request().input('id', id);
     if (data.name        !== undefined) { req.input('name', data.name); sets.push('name = @name'); }
@@ -102,28 +103,28 @@ export class MssqlRoleDAL implements IRoleDAL {
 export class MssqlDepartmentDAL implements IDepartmentDAL {
   constructor(private readonly pool: ConnectionPool) {}
 
-  async findAll(activeOnly = true): Promise<Department[]> {
-    const r = await this.pool.request().query<Department>(`SELECT * FROM departments ${activeOnly ? 'WHERE is_active = 1' : ''}`);
+  async findAll(activeOnly = true): Promise<IDepartment[]> {
+    const r = await this.pool.request().query<IDepartment>(`SELECT * FROM departments ${activeOnly ? 'WHERE is_active = 1' : ''}`);
     return r.recordset;
   }
 
-  async findById(id: string): Promise<Department | null> {
-    const r = await this.pool.request().input('id', id).query<Department>('SELECT * FROM departments WHERE id = @id');
+  async findById(id: string): Promise<IDepartment | null> {
+    const r = await this.pool.request().input('id', id).query<IDepartment>('SELECT * FROM departments WHERE id = @id');
     return r.recordset[0] ?? null;
   }
 
-  async findByCode(code: string): Promise<Department | null> {
-    const r = await this.pool.request().input('code', code).query<Department>('SELECT * FROM departments WHERE code = @code');
+  async findByCode(code: string): Promise<IDepartment | null> {
+    const r = await this.pool.request().input('code', code).query<IDepartment>('SELECT * FROM departments WHERE code = @code');
     return r.recordset[0] ?? null;
   }
 
-  async findChildren(parentId: string): Promise<Department[]> {
+  async findChildren(parentId: string): Promise<IDepartment[]> {
     const r = await this.pool.request().input('parentId', parentId)
-      .query<Department>('SELECT * FROM departments WHERE parent_id = @parentId');
+      .query<IDepartment>('SELECT * FROM departments WHERE parent_id = @parentId');
     return r.recordset;
   }
 
-  async create(data: CreateDepartmentDTO): Promise<Department> {
+  async create(data: CreateDepartmentDTO): Promise<IDepartment> {
     const id = uuidv4();
     await this.pool.request()
       .input('id', id).input('name', data.name).input('code', data.code)
@@ -134,7 +135,7 @@ export class MssqlDepartmentDAL implements IDepartmentDAL {
     return (await this.findById(id))!;
   }
 
-  async update(id: string, data: UpdateDepartmentDTO): Promise<Department | null> {
+  async update(id: string, data: UpdateDepartmentDTO): Promise<IDepartment | null> {
     const sets: string[] = ['updated_at = GETUTCDATE()'];
     const req = this.pool.request().input('id', id);
     const fieldMap: Record<string, string> = { name: 'name', code: 'code', parentId: 'parent_id', managerId: 'manager_id', description: 'description' };
@@ -157,29 +158,29 @@ export class MssqlDepartmentDAL implements IDepartmentDAL {
 export class MssqlDesignationDAL implements IDesignationDAL {
   constructor(private readonly pool: ConnectionPool) {}
 
-  async findAll(activeOnly = true): Promise<Designation[]> {
-    const r = await this.pool.request().query<Designation>(`SELECT * FROM designations ${activeOnly ? 'WHERE is_active = 1' : ''}`);
+  async findAll(activeOnly = true): Promise<IDesignation[]> {
+    const r = await this.pool.request().query<IDesignation>(`SELECT * FROM designations ${activeOnly ? 'WHERE is_active = 1' : ''}`);
     return r.recordset;
   }
 
-  async findByDepartment(departmentId: string, activeOnly = true): Promise<Designation[]> {
+  async findByDepartment(departmentId: string, activeOnly = true): Promise<IDesignation[]> {
     const where = activeOnly ? 'AND is_active = 1' : '';
     const r = await this.pool.request().input('deptId', departmentId)
-      .query<Designation>(`SELECT * FROM designations WHERE department_id = @deptId ${where}`);
+      .query<IDesignation>(`SELECT * FROM designations WHERE department_id = @deptId ${where}`);
     return r.recordset;
   }
 
-  async findById(id: string): Promise<Designation | null> {
-    const r = await this.pool.request().input('id', id).query<Designation>('SELECT * FROM designations WHERE id = @id');
+  async findById(id: string): Promise<IDesignation | null> {
+    const r = await this.pool.request().input('id', id).query<IDesignation>('SELECT * FROM designations WHERE id = @id');
     return r.recordset[0] ?? null;
   }
 
-  async findByCode(code: string): Promise<Designation | null> {
-    const r = await this.pool.request().input('code', code).query<Designation>('SELECT * FROM designations WHERE code = @code');
+  async findByCode(code: string): Promise<IDesignation | null> {
+    const r = await this.pool.request().input('code', code).query<IDesignation>('SELECT * FROM designations WHERE code = @code');
     return r.recordset[0] ?? null;
   }
 
-  async create(data: CreateDesignationDTO): Promise<Designation> {
+  async create(data: CreateDesignationDTO): Promise<IDesignation> {
     const id = uuidv4();
     await this.pool.request()
       .input('id', id).input('name', data.name).input('code', data.code)
@@ -190,7 +191,7 @@ export class MssqlDesignationDAL implements IDesignationDAL {
     return (await this.findById(id))!;
   }
 
-  async update(id: string, data: UpdateDesignationDTO): Promise<Designation | null> {
+  async update(id: string, data: UpdateDesignationDTO): Promise<IDesignation | null> {
     const sets: string[] = ['updated_at = GETUTCDATE()'];
     const req = this.pool.request().input('id', id);
     const fieldMap: Record<string, string> = { name: 'name', code: 'code', departmentId: 'department_id', level: 'level', description: 'description' };

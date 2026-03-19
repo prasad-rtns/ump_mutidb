@@ -1,0 +1,341 @@
+openapi: 3.0.3
+
+info:
+  title: UMP Auth & User Service API
+  version: 1.0.0
+  description: |
+    User Management Platform - Auth & User Microservice
+
+servers:
+  - url: http://localhost:6001/api/v1
+    description: Development
+  - url: https://api.ump-platform.com/api/v1
+    description: Production
+
+tags:
+  - name: Auth
+  - name: Users
+  - name: Roles
+  - name: Departments
+  - name: Designations
+  - name: Health
+
+components:
+
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    DbType:
+      in: header
+      name: X-DB-Type
+      required: false
+      schema:
+        type: string
+        enum: [postgres, mysql, mssql, oracle, mongodb]
+
+    PageParam:
+      in: query
+      name: page
+      schema:
+        type: integer
+        default: 1
+
+    LimitParam:
+      in: query
+      name: limit
+      schema:
+        type: integer
+        default: 10
+
+    IdParam:
+      in: path
+      name: id
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+  schemas:
+
+    # ───────── AUTH ─────────
+
+    RegisterRequest:
+      type: object
+      required:
+        - username
+        - email
+        - password
+        - firstName
+        - lastName
+        - roleId
+        - departmentId
+        - designationId
+      properties:
+        username: { type: string }
+        email: { type: string, format: email }
+        password: { type: string, format: password }
+        firstName: { type: string }
+        middleName: { type: string }
+        lastName: { type: string }
+        phone: { type: string }
+        roleId: { type: string, format: uuid }
+        departmentId: { type: string, format: uuid }
+        designationId: { type: string, format: uuid }
+
+    LoginRequest:
+      type: object
+      required: [identifier, password]
+      properties:
+        identifier: { type: string }
+        password: { type: string }
+
+    ChangePasswordRequest:
+      type: object
+      required: [currentPassword, newPassword]
+      properties:
+        currentPassword: { type: string }
+        newPassword: { type: string }
+
+    TokenResponse:
+      type: object
+      properties:
+        accessToken: { type: string }
+        refreshToken: { type: string }
+
+    # ───────── MASTER ─────────
+
+    Role:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        slug:
+          type: string
+          enum: [admin, lead, user]
+        permissions:
+          type: array
+          items:
+            type: string
+        isActive: { type: boolean }
+
+    Department:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        code: { type: string }
+        parentId: { type: string, format: uuid }
+        managerId: { type: string, format: uuid }
+        isActive: { type: boolean }
+
+    Designation:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        code: { type: string }
+        departmentId: { type: string, format: uuid }
+        level: { type: integer }
+        isActive: { type: boolean }
+
+    # ───────── USERS ─────────
+
+    User:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        username: { type: string }
+        email: { type: string }
+        firstName: { type: string }
+        middleName: { type: string }
+        lastName: { type: string }
+        phone: { type: string }
+        status:
+          type: string
+          enum: [active, inactive, suspended]
+        role:
+          $ref: '#/components/schemas/Role'
+        department:
+          $ref: '#/components/schemas/Department'
+        designation:
+          $ref: '#/components/schemas/Designation'
+        createdAt: { type: string, format: date-time }
+
+    PaginationMeta:
+      type: object
+      properties:
+        page: { type: integer }
+        limit: { type: integer }
+        total: { type: integer }
+        totalPages: { type: integer }
+
+    ErrorResponse:
+      type: object
+      properties:
+        message: { type: string }
+
+paths:
+
+  # ───────── AUTH ─────────
+
+  /auth/register:
+    post:
+      tags: [Auth]
+      parameters:
+        - $ref: '#/components/parameters/DbType'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        201:
+          description: User registered
+
+  /auth/login:
+    post:
+      tags: [Auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        200:
+          description: Login success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+
+  /auth/me:
+    get:
+      tags: [Auth]
+      security:
+        - BearerAuth: []
+      responses:
+        200:
+          description: Logged-in user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+
+  /auth/change-password:
+    post:
+      tags: [Auth]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangePasswordRequest'
+      responses:
+        200:
+          description: Password changed
+
+  # ───────── USERS ─────────
+
+  /users:
+    get:
+      tags: [Users]
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/LimitParam'
+      responses:
+        200:
+          description: List users
+
+    post:
+      tags: [Users]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        201:
+          description: User created
+
+  /users/{id}:
+    get:
+      tags: [Users]
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        200:
+          description: Get user by id
+
+    put:
+      tags: [Users]
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        200:
+          description: Updated
+
+    delete:
+      tags: [Users]
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        200:
+          description: Deleted
+
+  # ───────── MASTER DATA ─────────
+
+  /roles:
+    get:
+      tags: [Roles]
+      responses:
+        200:
+          description: List roles
+
+  /departments:
+    get:
+      tags: [Departments]
+      responses:
+        200:
+          description: List departments
+
+  /designations:
+    get:
+      tags: [Designations]
+      responses:
+        200:
+          description: List designations
+
+  # ───────── HEALTH ─────────
+
+  /health:
+    get:
+      tags: [Health]
+      responses:
+        200:
+          description: Service healthy
+        503:
+          description: Service degraded

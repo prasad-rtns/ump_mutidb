@@ -1,7 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import type { ConnectionPool, IResult } from 'mssql';
 import { IUserDAL } from '../interfaces/user.dal.interface';
-import { User, CreateUserDTO, UpdateUserDTO, UserFilter } from '../../types';
+import { IUser, CreateUserDTO, UpdateUserDTO, UserFilter } from '../../modules/user/user.types';
 import { PaginatedResult } from '@prasad-rtns/shared';
 
 /**
@@ -12,15 +12,15 @@ export class MssqlUserDAL implements IUserDAL {
   constructor(private readonly pool: ConnectionPool) {}
 
   // ─── findById ────────────────────────────────────────────────────────────────
-  async findById(id: string): Promise<User | null> {
+  async findById(id: string): Promise<IUser | null> {
     const r = await this.pool.request()
       .input('id', id)
-      .query<User>('SELECT * FROM users WHERE id = @id AND status != \'deleted\'');
+      .query<IUser>('SELECT * FROM users WHERE id = @id AND status != \'deleted\'');
     return r.recordset[0] ?? null;
   }
 
-  async findByIdWithRelations(id: string): Promise<User | null> {
-    const r = await this.pool.request().input('id', id).query<User>(`
+  async findByIdWithRelations(id: string): Promise<IUser | null> {
+    const r = await this.pool.request().input('id', id).query<IUser>(`
       SELECT u.*,
              r.id AS role_id, r.name AS role_name, r.slug AS role_slug, r.permissions AS role_permissions,
              d.id AS dept_id, d.name AS dept_name, d.code AS dept_code,
@@ -35,31 +35,31 @@ export class MssqlUserDAL implements IUserDAL {
     return this._mapRow(r.recordset[0] as any);
   }
 
-  async findByEmail(email: string): Promise<User | null> {
+  async findByEmail(email: string): Promise<IUser | null> {
     const r = await this.pool.request().input('email', email.toLowerCase())
-      .query<User>('SELECT * FROM users WHERE email = @email');
+      .query<IUser>('SELECT * FROM users WHERE email = @email');
     return r.recordset[0] ?? null;
   }
 
-  async findByUsername(username: string): Promise<User | null> {
+  async findByUsername(username: string): Promise<IUser | null> {
     const r = await this.pool.request().input('username', username)
-      .query<User>('SELECT * FROM users WHERE username = @username');
+      .query<IUser>('SELECT * FROM users WHERE username = @username');
     return r.recordset[0] ?? null;
   }
 
-  async findByEmailOrUsername(identifier: string): Promise<User | null> {
+  async findByEmailOrUsername(identifier: string): Promise<IUser | null> {
     const r = await this.pool.request()
       .input('email', identifier.toLowerCase())
       .input('username', identifier)
-      .query<User>('SELECT * FROM users WHERE email = @email OR username = @username');
+      .query<IUser>('SELECT * FROM users WHERE email = @email OR username = @username');
     return r.recordset[0] ?? null;
   }
 
-  async findAll(opts: UserFilter): Promise<PaginatedResult<User>> {
+  async findAll(opts: UserFilter): Promise<PaginatedResult<IUser>> {
     return this.findFiltered(opts);
   }
 
-  async findFiltered(filter: UserFilter): Promise<PaginatedResult<User>> {
+  async findFiltered(filter: UserFilter): Promise<PaginatedResult<IUser>> {
     const { page = 1, limit = 10, search, sortBy = 'created_at', sortOrder = 'DESC',
       status, departmentId, roleId, departmentFilter, userFilter } = filter;
     const offset = (page - 1) * limit;
@@ -93,14 +93,14 @@ export class MssqlUserDAL implements IUserDAL {
     const countSql = `SELECT COUNT(*) AS total FROM users u ${where}`;
 
     const [data, count] = await Promise.all([
-      req.query<User>(sql),
+      req.query<IUser>(sql),
       this.pool.request().query<{ total: number }>(countSql),
     ]);
 
     return { data: data.recordset.map(r => this._mapRow(r as any)), total: count.recordset[0]?.total ?? 0 };
   }
 
-  async create(data: CreateUserDTO): Promise<User> {
+  async create(data: CreateUserDTO): Promise<IUser> {
     const id  = uuidv4();
     const now = new Date();
     await this.pool.request()
@@ -128,7 +128,7 @@ export class MssqlUserDAL implements IUserDAL {
     return user!;
   }
 
-  async update(id: string, data: UpdateUserDTO): Promise<User | null> {
+  async update(id: string, data: UpdateUserDTO): Promise<IUser | null> {
     const updates: string[] = [];
     const req = this.pool.request().input('id', id).input('updatedAt', new Date());
     const fieldMap: Record<string, string> = {
@@ -180,7 +180,7 @@ export class MssqlUserDAL implements IUserDAL {
       .query('UPDATE users SET last_login_at = GETUTCDATE(), last_login_ip = @ip, updated_at = GETUTCDATE() WHERE id = @id');
   }
 
-  async changeStatus(id: string, status: User['status'], updatedBy: string): Promise<boolean> {
+  async changeStatus(id: string, status: IUser['status'], updatedBy: string): Promise<boolean> {
     const r = await this.pool.request().input('id', id).input('status', status).input('updatedBy', updatedBy)
       .query('UPDATE users SET status = @status, updated_by = @updatedBy, updated_at = GETUTCDATE() WHERE id = @id');
     return (r.rowsAffected[0] ?? 0) > 0;
@@ -203,7 +203,7 @@ export class MssqlUserDAL implements IUserDAL {
   }
 
   // ─── Helper: map flat SQL row to nested User shape ────────────────────────────
-  private _mapRow(row: Record<string, unknown>): User {
+  private _mapRow(row: Record<string, unknown>): IUser {
     return {
       id:                     row.id as string,
       username:               row.username as string,
@@ -216,7 +216,7 @@ export class MssqlUserDAL implements IUserDAL {
       roleId:                 (row.role_id ?? row.roleId) as string,
       departmentId:           (row.department_id ?? row.departmentId) as string,
       designationId:          (row.designation_id ?? row.designationId) as string,
-      status:                 row.status as User['status'],
+      status:                 row.status as IUser['status'],
       isEmailVerified:        Boolean(row.is_email_verified),
       emailVerificationToken: (row.email_verification_token ?? null) as string | null,
       passwordResetToken:     (row.password_reset_token ?? null) as string | null,
@@ -231,9 +231,9 @@ export class MssqlUserDAL implements IUserDAL {
       updatedBy:              (row.updated_by ?? null) as string | null,
       createdAt:              row.created_at as Date,
       updatedAt:              row.updated_at as Date,
-      role:        row.role_slug ? { id: row.role_id, slug: row.role_slug, name: row.role_name, permissions: [] } as unknown as User['role'] : undefined,
-      department:  row.dept_name ? { id: row.dept_id, name: row.dept_name } as unknown as User['department'] : undefined,
-      designation: row.desig_name ? { id: row.desig_id, name: row.desig_name } as unknown as User['designation'] : undefined,
+      role:        row.role_slug ? { id: row.role_id, slug: row.role_slug, name: row.role_name, permissions: [] } as unknown as IUser['role'] : undefined,
+      department:  row.dept_name ? { id: row.dept_id, name: row.dept_name } as unknown as IUser['department'] : undefined,
+      designation: row.desig_name ? { id: row.desig_id, name: row.desig_name } as unknown as IUser['designation'] : undefined,
     };
   }
 }

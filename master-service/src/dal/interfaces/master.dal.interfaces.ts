@@ -1,4 +1,4 @@
-import { Country, State, City, Category, Tag, DocumentType, SystemSetting, CreateCountryDTO, CreateStateDTO, CreateCityDTO, CreateCategoryDTO, CreateTagDTO, CreateDocumentTypeDTO, UpsertSettingDTO, UpdateCountryDTO, UpdateCategoryDTO } from '../../types';
+import { Country, State, City, Category, Tag, DocumentType, SystemSetting, CreateCountryDTO, CreateStateDTO, CreateCityDTO, CreateCategoryDTO, CreateTagDTO, CreateDocumentTypeDTO, UpsertSettingDTO, UpdateCountryDTO, UpdateCategoryDTO } from '../../modules/coredata/coredata.types';
 
 export interface ICountryDAL {
   findAll(activeOnly?: boolean): Promise<Country[]>;

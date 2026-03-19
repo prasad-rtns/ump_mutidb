@@ -9,11 +9,22 @@ import cookieParser from 'cookie-parser';
 import compression from 'compression';
 import morgan from 'morgan';
 import swaggerUi from 'swagger-ui-express';
-import swaggerJsdoc from 'swagger-jsdoc';
-import router from './routes';
-import { applySecurityMiddleware, globalErrorHandler, notFoundHandler } from '@prasad-rtns/shared';
+import router from './modules/document_upload/document.routes';
+import {
+  applySecurityMiddleware,
+  globalErrorHandler,
+  notFoundHandler,
+  DatabaseType
+} from '@prasad-rtns/shared';
+//import { checkDbHealth } from './database/connection';
+import { checkDbHealth } from './database/adapters/db.connection';
 import { ResponseUtil } from '@prasad-rtns/shared';
-import logger from './controllers/logger';
+import logger from './database/logger';
+import { register, collectDefaultMetrics } from 'prom-client';
+import {metricsMiddleware} from './middleware/metrics.middleware';
+import {requestLogger} from './middleware/request.middleware';
+import fs from 'fs';
+import YAML from 'yaml';
 
 const app = express();
 applySecurityMiddleware(app);
@@ -26,28 +37,51 @@ app.use(morgan('combined', { stream: { write: (msg) => logger.http(msg.trim()) }
 // Serve uploaded files (local provider)
 app.use('/uploads', express.static(path.resolve(process.env.UPLOAD_DIR || './uploads')));
 
-// Swagger
-const swaggerSpec = swaggerJsdoc({
-  definition: {
-    openapi: '3.0.0',
-    info: { title: 'UMP Document Service API', version: '1.0.0', description: 'Document upload & CDN management' },
-    servers: [{ url: 'http://localhost:6003', description: 'Development' }],
-    components: {
-      securitySchemes: { BearerAuth: { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' } },
-    },
-    tags: [{ name: 'Documents' }, { name: 'Health' }],
-  },
-  apis: ['./src/routes/*.ts'],
+// ─── Swagger UI ───────────────────────────────────────────────────────────────//
+//const swaggerDocument = YAML.load('./src/docs/openapi.yaml');
+const filePath = path.resolve(process.cwd(), 'src/docs/swagger.yaml');
+
+if (!fs.existsSync(filePath)) {
+  console.error('Swagger file not found:', filePath);
+}
+
+const file = fs.readFileSync(filePath, 'utf8');
+const swaggerDocument = YAML.parse(file);
+
+// logger.info('Loading swagger...');
+// ─── Custom Logger Example (Uncomment if needed) ───────────────────────────────────────
+// import { createLogger } from './database/logger';
+// const customLogger = createLogger('auth-service', 'custom.log');
+// customLogger.info('Loading custom log...');
+app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
+
+app.use('/api/v1/documents', router);
+
+// ─── Metrics endpoint for Prometheus
+app.use(metricsMiddleware);
+app.use(requestLogger);
+collectDefaultMetrics({ register });
+app.get('/metrics', async (_req, res) => {
+  res.set('Content-Type', register.contentType);
+  res.end(await register.metrics());
 });
 
-app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, { customSiteTitle: 'Document Service API Docs' }));
-app.get('/api/docs.json', (_req, res) => res.json(swaggerSpec));
-app.use('/api/documents', router);
+// ─── Health Check ──────────────────────────────────────────────────────────────
+app.get('/health', async (_req, res) => {
+  const dbType = (process.env.DEFAULT_DB_TYPE || 'postgres') as DatabaseType;
+  const dbHealth = await checkDbHealth(dbType);
+  const allHealthy = Object.values(dbHealth).some(Boolean);
+  return ResponseUtil.success(res, {
+    status: allHealthy ? 'healthy' : 'degraded',
+    service: process.env.SERVICE_NAME || 'auth-service',
+    version: '1.0.0',
+    databases: dbHealth,
+    uptime: process.uptime(),
+    timestamp: new Date().toISOString(),
+  }, allHealthy ? 'Service is healthy' : 'Service degraded', allHealthy ? 200 : 503);
+});
 
-app.get('/health', (_req, res) =>
-  ResponseUtil.success(res, { status: 'healthy', service: 'document-service', uptime: process.uptime() })
-);
-
+// ─── 404 & Error Handlers ──────────────────────────────────────────────────────
 app.use(notFoundHandler);
 app.use(globalErrorHandler);
 

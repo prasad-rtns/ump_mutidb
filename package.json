@@ -4,19 +4,22 @@
   "private": true,
   "description": "User Management Platform — npm workspaces monorepo",
   "scripts": {
-    "build:shared":   "npm run build --workspace=shared",
-    "build:auth":     "npm run build --workspace=auth-service",
-    "build:master":   "npm run build --workspace=master-service",
+    "build:shared": "npm run build --workspace=shared",
+    "build:auth": "npm run build --workspace=auth-service",
+    "build:master": "npm run build --workspace=master-service",
     "build:document": "npm run build --workspace=document-service",
-    "build":          "npm run build:shared && npm run build:auth && npm run build:master && npm run build:document",
-    "dev:auth":       "npm run dev --workspace=auth-service",
-    "dev:master":     "npm run dev --workspace=master-service",
-    "dev:document":   "npm run dev --workspace=document-service",
-    "lint":           "npm run lint --workspaces --if-present",
-    "clean":          "find . -name 'dist' -not -path '*/node_modules/*' | xargs rm -rf"
+    "build": "npm run build:shared && npm run build:auth && npm run build:master && npm run build:document",
+    "dev:auth": "npm run dev --workspace=auth-service",
+    "dev:master": "npm run dev --workspace=master-service",
+    "dev:document": "npm run dev --workspace=document-service",
+    "lint": "npm run lint --workspaces --if-present",
+    "clean": "find . -name 'dist' -not -path '*/node_modules/*' | xargs rm -rf"
   },
   "engines": {
     "node": ">=20.0.0",
-    "npm":  ">=10.0.0"
+    "npm": ">=10.0.0"
+  },
+  "dependencies": {
+    "yaml": "^2.8.2"
   }
 }

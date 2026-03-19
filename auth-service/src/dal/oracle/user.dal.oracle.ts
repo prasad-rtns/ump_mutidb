@@ -1,7 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import type { Pool as OraPool, Result as OraResult } from 'oracledb';
 import { IUserDAL } from '../interfaces/user.dal.interface';
-import { User, CreateUserDTO, UpdateUserDTO, UserFilter } from '../../types';
+import { IUser, CreateUserDTO, UpdateUserDTO, UserFilter } from '../../modules/user/user.types';
 import { PaginatedResult } from '@prasad-rtns/shared';
 
 /**
@@ -25,14 +25,14 @@ export class OracleUserDAL implements IUserDAL {
     }
   }
 
-  async findById(id: string): Promise<User | null> {
+  async findById(id: string): Promise<IUser | null> {
     const r = await this.exec<Record<string, unknown>>(
       `SELECT * FROM users WHERE id = :id`, { id }
     );
     return r.rows?.[0] ? this._map(r.rows[0]) : null;
   }
 
-  async findByIdWithRelations(id: string): Promise<User | null> {
+  async findByIdWithRelations(id: string): Promise<IUser | null> {
     const r = await this.exec<Record<string, unknown>>(`
       SELECT u.*,
              r.id AS role_id, r.name AS role_name, r.slug AS role_slug,
@@ -47,21 +47,21 @@ export class OracleUserDAL implements IUserDAL {
     return r.rows?.[0] ? this._map(r.rows[0], true) : null;
   }
 
-  async findByEmail(email: string): Promise<User | null> {
+  async findByEmail(email: string): Promise<IUser | null> {
     const r = await this.exec<Record<string, unknown>>(
       'SELECT * FROM users WHERE email = :email', { email: email.toLowerCase() }
     );
     return r.rows?.[0] ? this._map(r.rows[0]) : null;
   }
 
-  async findByUsername(username: string): Promise<User | null> {
+  async findByUsername(username: string): Promise<IUser | null> {
     const r = await this.exec<Record<string, unknown>>(
       'SELECT * FROM users WHERE username = :username', { username }
     );
     return r.rows?.[0] ? this._map(r.rows[0]) : null;
   }
 
-  async findByEmailOrUsername(identifier: string): Promise<User | null> {
+  async findByEmailOrUsername(identifier: string): Promise<IUser | null> {
     const r = await this.exec<Record<string, unknown>>(
       'SELECT * FROM users WHERE email = :email OR username = :username',
       { email: identifier.toLowerCase(), username: identifier }
@@ -69,11 +69,11 @@ export class OracleUserDAL implements IUserDAL {
     return r.rows?.[0] ? this._map(r.rows[0]) : null;
   }
 
-  async findAll(opts: UserFilter): Promise<PaginatedResult<User>> {
+  async findAll(opts: UserFilter): Promise<PaginatedResult<IUser>> {
     return this.findFiltered(opts);
   }
 
-  async findFiltered(filter: UserFilter): Promise<PaginatedResult<User>> {
+  async findFiltered(filter: UserFilter): Promise<PaginatedResult<IUser>> {
     const { page = 1, limit = 10, search, sortBy = 'created_at', sortOrder = 'DESC',
       status, departmentId, roleId, departmentFilter, userFilter } = filter;
 
@@ -119,7 +119,7 @@ export class OracleUserDAL implements IUserDAL {
     };
   }
 
-  async create(data: CreateUserDTO): Promise<User> {
+  async create(data: CreateUserDTO): Promise<IUser> {
     const id  = uuidv4();
     await this.exec(`
       INSERT INTO users (id, username, email, password, first_name, last_name, phone, avatar,
@@ -136,7 +136,7 @@ export class OracleUserDAL implements IUserDAL {
     return (await this.findById(id))!;
   }
 
-  async update(id: string, data: UpdateUserDTO): Promise<User | null> {
+  async update(id: string, data: UpdateUserDTO): Promise<IUser | null> {
     const binds: Record<string, unknown> = { id };
     const sets: string[] = ['updated_at = SYSDATE'];
     const fieldMap: Record<string, string> = {
@@ -190,7 +190,7 @@ export class OracleUserDAL implements IUserDAL {
     await this.exec('UPDATE users SET last_login_at = SYSDATE, last_login_ip = :ip, updated_at = SYSDATE WHERE id = :id', { id, ip });
   }
 
-  async changeStatus(id: string, status: User['status'], updatedBy: string): Promise<boolean> {
+  async changeStatus(id: string, status: IUser['status'], updatedBy: string): Promise<boolean> {
     const r = await this.exec(
       'UPDATE users SET status = :status, updated_by = :updatedBy, updated_at = SYSDATE WHERE id = :id',
       { id, status, updatedBy }
@@ -215,7 +215,7 @@ export class OracleUserDAL implements IUserDAL {
   }
 
   // ─── Map Oracle row (all-caps keys) to camelCase User ────────────────────────
-  private _map(row: Record<string, unknown>, withRelations = false): User {
+  private _map(row: Record<string, unknown>, withRelations = false): IUser {
     const g = (k: string) => row[k] ?? row[k.toUpperCase()] ?? row[k.toLowerCase()];
     return {
       id:                     g('id') as string,
@@ -229,7 +229,7 @@ export class OracleUserDAL implements IUserDAL {
       roleId:                 g('role_id') as string,
       departmentId:           g('department_id') as string,
       designationId:          g('designation_id') as string,
-      status:                 g('status') as User['status'],
+      status:                 g('status') as IUser['status'],
       isEmailVerified:        Boolean(g('is_email_verified')),
       emailVerificationToken: (g('email_verification_token') ?? null) as string | null,
       passwordResetToken:     (g('password_reset_token') ?? null) as string | null,
@@ -245,13 +245,13 @@ export class OracleUserDAL implements IUserDAL {
       createdAt:              g('created_at') as Date,
       updatedAt:              g('updated_at') as Date,
       ...(withRelations && g('role_slug') ? {
-        role: { id: g('role_id'), slug: g('role_slug'), name: g('role_name'), permissions: [] } as unknown as User['role'],
+        role: { id: g('role_id'), slug: g('role_slug'), name: g('role_name'), permissions: [] } as unknown as IUser['role'],
       } : {}),
       ...(withRelations && g('dept_name') ? {
-        department: { id: g('dept_id'), name: g('dept_name') } as unknown as User['department'],
+        department: { id: g('dept_id'), name: g('dept_name') } as unknown as IUser['department'],
       } : {}),
       ...(withRelations && g('desig_name') ? {
-        designation: { id: g('desig_id'), name: g('desig_name') } as unknown as User['designation'],
+        designation: { id: g('desig_id'), name: g('desig_name') } as unknown as IUser['designation'],
       } : {}),
     };
   }

@@ -1,4 +1,4 @@
-import { Document, CreateDocumentDTO, DocumentFilter, UpdateDocumentStatusDTO } from '../../types';
+import { Document, CreateDocumentDTO, DocumentFilter, UpdateDocumentStatusDTO } from '../../modules/document_upload/document.types';
 import { PaginatedResult } from '@prasad-rtns/shared';
 
 export interface IDocumentDAL {

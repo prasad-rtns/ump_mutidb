@@ -1,7 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import type { Collection } from 'mongodb';
 import { IUserDAL } from '../interfaces/user.dal.interface';
-import { User, CreateUserDTO, UpdateUserDTO, UserFilter } from '../../types';
+import { IUser, CreateUserDTO, UpdateUserDTO, UserFilter } from '../../modules/user/user.types';
 import { PaginatedResult } from '@prasad-rtns/shared';
 import { MongoCollections } from '../../schemas/mongo.schema';
 
@@ -12,12 +12,12 @@ export class MongoUserDAL implements IUserDAL {
     this.col = collections.users as unknown as Collection;
   }
 
-  async findById(id: string): Promise<User | null> {
+  async findById(id: string): Promise<IUser | null> {
     const doc = await this.collections.users.findOne({ id });
-    return doc as unknown as User | null;
+    return doc as unknown as IUser | null;
   }
 
-  async findByIdWithRelations(id: string): Promise<User | null> {
+  async findByIdWithRelations(id: string): Promise<IUser | null> {
     const user = await this.collections.users.findOne({ id });
     if (!user) return null;
     const [role, dept, desig] = await Promise.all([
@@ -25,31 +25,31 @@ export class MongoUserDAL implements IUserDAL {
       this.collections.departments.findOne({ id: user.departmentId }),
       this.collections.designations.findOne({ id: user.designationId }),
     ]);
-    return { ...user, role: role ?? undefined, department: dept ?? undefined, designation: desig ?? undefined } as unknown as User;
+    return { ...user, role: role ?? undefined, department: dept ?? undefined, designation: desig ?? undefined } as unknown as IUser;
   }
 
-  async findByEmail(email: string): Promise<User | null> {
+  async findByEmail(email: string): Promise<IUser | null> {
     const doc = await this.collections.users.findOne({ email: email.toLowerCase() });
-    return doc as unknown as User | null;
+    return doc as unknown as IUser | null;
   }
 
-  async findByUsername(username: string): Promise<User | null> {
+  async findByUsername(username: string): Promise<IUser | null> {
     const doc = await this.collections.users.findOne({ username });
-    return doc as unknown as User | null;
+    return doc as unknown as IUser | null;
   }
 
-  async findByEmailOrUsername(identifier: string): Promise<User | null> {
+  async findByEmailOrUsername(identifier: string): Promise<IUser | null> {
     const doc = await this.collections.users.findOne({
       $or: [{ email: identifier.toLowerCase() }, { username: identifier }],
     });
-    return doc as unknown as User | null;
+    return doc as unknown as IUser | null;
   }
 
-  async findAll(opts: UserFilter): Promise<PaginatedResult<User>> {
+  async findAll(opts: UserFilter): Promise<PaginatedResult<IUser>> {
     return this.findFiltered(opts);
   }
 
-  async findFiltered(filter: UserFilter): Promise<PaginatedResult<User>> {
+  async findFiltered(filter: UserFilter): Promise<PaginatedResult<IUser>> {
     const { page = 1, limit = 10, search, sortBy = 'createdAt', sortOrder = 'desc',
       status, departmentId, roleId, departmentFilter, userFilter } = filter;
 
@@ -81,10 +81,10 @@ export class MongoUserDAL implements IUserDAL {
         .toArray(),
       this.collections.users.countDocuments(query),
     ]);
-    return { data: data as unknown as User[], total };
+    return { data: data as unknown as IUser[], total };
   }
 
-  async create(data: CreateUserDTO): Promise<User> {
+  async create(data: CreateUserDTO): Promise<IUser> {
     const now = new Date();
     const doc = {
       id: uuidv4(), ...(data as any),
@@ -95,16 +95,16 @@ export class MongoUserDAL implements IUserDAL {
       createdAt: now, updatedAt: now,
     };
     await this.collections.users.insertOne(doc);
-    return doc as unknown as User;
+    return doc as unknown as IUser;
   }
 
-  async update(id: string, data: UpdateUserDTO): Promise<User | null> {
+  async update(id: string, data: UpdateUserDTO): Promise<IUser | null> {
     const result = await this.collections.users.findOneAndUpdate(
       { id },
       { $set: { ...(data as any), updatedAt: new Date() } },
       { returnDocument: 'after' }
     );
-    return result as unknown as User | null;
+    return result as unknown as IUser | null;
   }
 
   async delete(id: string): Promise<boolean> {
@@ -142,7 +142,7 @@ export class MongoUserDAL implements IUserDAL {
     );
   }
 
-  async changeStatus(id: string, status: User['status'], updatedBy: string): Promise<boolean> {
+  async changeStatus(id: string, status: IUser['status'], updatedBy: string): Promise<boolean> {
     const result = await this.collections.users.updateOne(
       { id },
       { $set: { status, updatedBy, updatedAt: new Date() } }

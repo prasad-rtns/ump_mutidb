@@ -41,7 +41,7 @@ RUN npm ci --omit=dev \
 
 # Copy compiled output from builder
 COPY --from=builder /app/dist ./dist
-
+COPY src ./src
 # Ensure correct permissions
 RUN mkdir -p logs \
     && chown -R nodejs:nodejs /app

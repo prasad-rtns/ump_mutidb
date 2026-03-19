@@ -1,0 +1,561 @@
+openapi: 3.0.3
+
+info:
+  title: UMP Auth & User Service API
+  version: 1.0.0
+  description: User Management Platform - Authentication & User APIs
+
+servers:
+  - url: http://localhost:8082/api/v1
+    description: Development
+
+tags:
+  - name: Auth
+  - name: Users
+  - name: Roles
+  - name: Departments
+  - name: Designations
+  - name: Health
+
+components:
+
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    DbType:
+      in: header
+      name: X-DB-Type
+      required: false
+      schema:
+        type: string
+        enum: [postgres, mysql, mssql, oracle, mongodb]
+      example: postgres
+
+    IdParam:
+      in: path
+      name: id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: "550e8400-e29b-41d4-a716-446655440000"
+
+    PageParam:
+      in: query
+      name: page
+      schema:
+        type: integer
+        default: 1
+      example: 1
+
+    LimitParam:
+      in: query
+      name: limit
+      schema:
+        type: integer
+        default: 10
+      example: 10
+
+  schemas:
+
+    RegisterRequest:
+      type: object
+      required:
+        - username
+        - email
+        - password
+        - firstName
+        - lastName
+        - roleId
+        - departmentId
+        - designationId
+      properties:
+        username:
+          type: string
+          example: john_doe
+        email:
+          type: string
+          format: email
+          example: john@example.com
+        password:
+          type: string
+          format: password
+          example: Secret@123
+        firstName:
+          type: string
+          example: John
+        middleName:
+          type: string
+          example: M
+        lastName:
+          type: string
+          example: Doe
+        phone:
+          type: string
+          example: "+919876543210"
+        roleId:
+          type: string
+          format: uuid
+          example: "11111111-1111-1111-1111-111111111111"
+        departmentId:
+          type: string
+          format: uuid
+          example: "22222222-2222-2222-2222-222222222222"
+        designationId:
+          type: string
+          format: uuid
+          example: "33333333-3333-3333-3333-333333333333"
+
+    LoginRequest:
+      type: object
+      required: [identifier, password]
+      properties:
+        identifier:
+          type: string
+          example: john@example.com
+        password:
+          type: string
+          example: Secret@123
+
+    ChangePasswordRequest:
+      type: object
+      required: [currentPassword, newPassword]
+      properties:
+        currentPassword:
+          type: string
+          example: OldPassword@123
+        newPassword:
+          type: string
+          example: NewPassword@123
+
+    TokenResponse:
+      type: object
+      properties:
+        accessToken:
+          type: string
+          example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        refreshToken:
+          type: string
+          example: dGhpc2lzYXJlZnJlc2h0b2tlbg==
+
+    Role:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          example: Administrator
+        slug:
+          type: string
+          enum: [admin, lead, user]
+        permissions:
+          type: array
+          items:
+            type: string
+          example: { "user": ["create", "update", "delete", "read"], "role": ["manage"] }
+        isActive:
+          type: boolean
+          example: true
+
+    Department:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          example: IT Department
+        code:
+          type: string
+          example: IT001
+        isActive:
+          type: boolean
+          example: true
+
+    Designation:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          example: Senior Developer
+        code:
+          type: string
+          example: SD001
+        level:
+          type: integer
+          example: 3
+
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        username:
+          type: string
+          example: john_doe
+        email:
+          type: string
+          example: john@example.com
+        firstName:
+          type: string
+        lastName:
+          type: string
+        status:
+          type: string
+          enum: [active, inactive, suspended]
+        role:
+          $ref: '#/components/schemas/Role'
+        department:
+          $ref: '#/components/schemas/Department'
+        designation:
+          $ref: '#/components/schemas/Designation'
+        createdAt:
+          type: string
+          format: date-time
+
+    PaginationMeta:
+      type: object
+      properties:
+        page:
+          type: integer
+        limit:
+          type: integer
+        total:
+          type: integer
+        totalPages:
+          type: integer
+
+paths:
+
+  /auth/register:
+    post:
+      tags: [Auth]
+      parameters:
+        - $ref: '#/components/parameters/DbType'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        201:
+          description: User registered successfully
+
+  /auth/login:
+    post:
+      tags: [Auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        200:
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+
+  /auth/me:
+    get:
+      tags: [Auth]
+      security:
+        - BearerAuth: []
+      responses:
+        200:
+          description: Logged-in user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+
+  /users:
+    get:
+      tags: [Users]
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/LimitParam'
+      responses:
+        200:
+          description: List users
+
+    post:
+      tags: [Users]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        201:
+          description: User created
+
+  /users/{id}:
+    get:
+      tags: [Users]
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        200:
+          description: User found
+
+    put:
+      tags: [Users]
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        200:
+          description: User updated
+
+    delete:
+      tags: [Users]
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        200:
+          description: User deleted
+# ─── Roles ────────────────────────────────────────────────────────────────
+  /auth/master/roles:
+    get:
+      tags: [Roles]
+      responses:
+        200:
+          description: List roles
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Role'
+
+    post:
+      tags: [Roles]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Role'
+      responses:
+        201:
+          description: Role created
+
+  /auth/master/roles/{id}:
+    get:
+      tags: [Roles]
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        200:
+          description: Role details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Role'
+
+    put:
+      tags: [Roles]
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Role'
+      responses:
+        200:
+          description: Role updated
+
+    delete:
+      tags: [Roles]
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        200:
+          description: Role deleted
+
+  # ─── Departments ───────────────────────────────────────────────────────────
+  /auth/master/departments:
+    get:
+      tags: [Departments]
+      security:
+        - BearerAuth: []
+      responses:
+        200:
+          description: List departments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Department'
+
+    post:
+      tags: [Departments]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Department'
+      responses:
+        201:
+          description: Department created
+
+  /auth/master/departments/{id}:
+    get:
+      tags: [Departments]
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        200:
+          description: Department details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Department'
+
+    put:
+      tags: [Departments]
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Department'
+      responses:
+        200:
+          description: Department updated
+
+    delete:
+      tags: [Departments]
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        200:
+          description: Department deleted
+
+  # ─── Designations ──────────────────────────────────────────────────────────
+  /auth/master/designations:
+    get:
+      tags: [Designations]
+      security:
+        - BearerAuth: []
+      responses:
+        200:
+          description: List designations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Designation'
+
+    post:
+      tags: [Designations]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Designation'
+      responses:
+        201:
+          description: Designation created
+
+  /auth/master/designations/{id}:
+    get:
+      tags: [Designations]
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        200:
+          description: Designation details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Designation'
+
+    put:
+      tags: [Designations]
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Designation'
+      responses:
+        200:
+          description: Designation updated
+
+    delete:
+      tags: [Designations]
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        200:
+          description: Designation deleted
+  /health:
+    get:
+      tags: [Health]
+      responses:
+        200:
+          description: Service healthy
+        503:
+          description: Service degraded

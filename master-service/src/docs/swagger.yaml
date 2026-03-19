@@ -1,0 +1,575 @@
+openapi: 3.0.3
+
+info:
+  title: Master Service API
+  version: 1.0.0
+  description: Core master data management APIs (Countries, States, Cities, Categories, Tags, Document Types, Settings)
+
+servers:
+  - url: http://localhost:8082/api/v1/master
+    description: Development
+
+tags:
+  - name: Countries
+  - name: States
+  - name: Cities
+  - name: Categories
+  - name: Tags
+  - name: Document Types
+  - name: System Settingss
+
+components:
+
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    DbType:
+      in: header
+      name: X-DB-Type
+      required: false
+      schema:
+        type: string
+        enum: [postgres, mysql, mssql, oracle, mongodb]
+      example: postgres
+
+    IdParam:
+      in: path
+      name: id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: "550e8400-e29b-41d4-a716-446655440000"
+
+    PageParam:
+      in: query
+      name: page
+      schema:
+        type: integer
+        default: 1
+      example: 1
+
+    LimitParam:
+      in: query
+      name: limit
+      schema:
+        type: integer
+        default: 10
+      example: 10
+
+  schemas:
+
+    UUID:
+      type: string
+      format: uuid
+      example: "550e8400-e29b-41d4-a716-446655440000"
+
+    # ───────────────── Countries ─────────────────
+    Country:
+      type: object
+      properties:
+        id: { $ref: '#/components/schemas/UUID' }
+        name: { type: string }
+        code: { type: string }
+        dialCode: { type: string }
+        flag: { type: string }
+        currency: { type: string }
+        currencySymbol: { type: string }
+        isActive: { type: boolean }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
+    CreateCountry:
+      type: object
+      required: [name, code]
+      properties:
+        name: { type: string }
+        code: { type: string }
+        dialCode: { type: string }
+        flag: { type: string }
+        currency: { type: string }
+        currencySymbol: { type: string }
+
+    # ───────────────── States ─────────────────
+    State:
+      type: object
+      properties:
+        id: { $ref: '#/components/schemas/UUID' }
+        name: { type: string }
+        code: { type: string }
+        countryId: { $ref: '#/components/schemas/UUID' }
+        isActive: { type: boolean }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
+    CreateState:
+      type: object
+      required: [name, code, countryId]
+      properties:
+        name: { type: string }
+        code: { type: string }
+        countryId: { $ref: '#/components/schemas/UUID' }
+
+    # ───────────────── Cities ─────────────────
+    City:
+      type: object
+      properties:
+        id: { $ref: '#/components/schemas/UUID' }
+        name: { type: string }
+        stateId: { $ref: '#/components/schemas/UUID' }
+        latitude: { type: number, format: double }
+        longitude: { type: number, format: double }
+        isActive: { type: boolean }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
+    CreateCity:
+      type: object
+      required: [name, stateId]
+      properties:
+        name: { type: string }
+        stateId: { $ref: '#/components/schemas/UUID' }
+        latitude: { type: number }
+        longitude: { type: number }
+
+    # ───────────────── Categories ─────────────────
+    Category:
+      type: object
+      properties:
+        id: { $ref: '#/components/schemas/UUID' }
+        name: { type: string }
+        code: { type: string }
+        parentId: { $ref: '#/components/schemas/UUID' }
+        description: { type: string }
+        icon: { type: string }
+        sortOrder: { type: integer }
+        isActive: { type: boolean }
+        metadata:
+          type: object
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
+    CreateCategory:
+      type: object
+      required: [name, code]
+      properties:
+        name: { type: string }
+        code: { type: string }
+        parentId: { $ref: '#/components/schemas/UUID' }
+        description: { type: string }
+        icon: { type: string }
+        sortOrder: { type: integer }
+        metadata:
+          type: object
+
+    # ───────────────── Tags ─────────────────
+    Tag:
+      type: object
+      properties:
+        id: { $ref: '#/components/schemas/UUID' }
+        name: { type: string }
+        slug: { type: string }
+        color: { type: string }
+        isActive: { type: boolean }
+
+    CreateTag:
+      type: object
+      required: [name, slug]
+      properties:
+        name: { type: string }
+        slug: { type: string }
+        color: { type: string }
+
+    # ───────────────── Document Types ─────────────────
+    DocumentType:
+      type: object
+      properties:
+        id: { $ref: '#/components/schemas/UUID' }
+        name: { type: string }
+        code: { type: string }
+        description: { type: string }
+        allowedMimeTypes:
+          type: array
+          items: { type: string }
+        maxSizeMb: { type: integer }
+        isRequired: { type: boolean }
+        isActive: { type: boolean }
+
+    CreateDocumentType:
+      type: object
+      required: [name, code]
+      properties:
+        name: { type: string }
+        code: { type: string }
+        description: { type: string }
+        allowedMimeTypes:
+          type: array
+          items: { type: string }
+        maxSizeMb: { type: integer }
+        isRequired: { type: boolean }
+
+    # ───────────────── Settings ─────────────────
+    SystemSetting:
+      type: object
+      properties:
+        id: { $ref: '#/components/schemas/UUID' }
+        key: { type: string }
+        value: { type: string }
+        type: { type: string }
+        description: { type: string }
+        isPublic: { type: boolean }
+        category: { type: string }
+
+paths:
+
+  # ───────────────── Countries ─────────────────
+  /countries:
+    get:
+      tags: [Countries]
+      summary: List countries
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Country' }
+
+    post:
+      tags: [Countries]
+      summary: Create country (Admin)
+      security: [{ BearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateCountry' }
+      responses:
+        201:
+          description: Created
+
+  /countries/{id}:
+    get:
+      tags: [Countries]
+      summary: Get country by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { $ref: '#/components/schemas/UUID' }
+      responses:
+        200:
+          description: Success
+
+    put:
+      tags: [Countries]
+      summary: Update country (Admin)
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { $ref: '#/components/schemas/UUID' }
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateCountry' }
+      responses:
+        200:
+          description: Updated
+
+  # ───────────────── States ─────────────────
+  /states:
+    get:
+      tags: [States]
+      summary: List states
+      responses:
+        200:
+          description: Success
+
+    post:
+      tags: [States]
+      summary: Create state (Admin)
+      security: [{ BearerAuth: [] }]
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateState' }
+      responses:
+        201:
+          description: Created
+
+  /states/{id}:
+    get:
+      tags: [States]
+      summary: Get state by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { $ref: '#/components/schemas/UUID' }
+      responses:
+        200:
+          description: Success
+
+  # ───────────────── Cities ─────────────────
+  /cities:
+    get:
+      tags: [Cities]
+      summary: List cities
+      responses:
+        200:
+          description: Success
+
+    post:
+      tags: [Cities]
+      summary: Create city (Admin)
+      security: [{ BearerAuth: [] }]
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateCity' }
+      responses:
+        201:
+          description: Created
+
+  /cities/{id}:
+    get:
+      tags: [Cities]
+      summary: Get city by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { $ref: '#/components/schemas/UUID' }
+      responses:
+        200:
+          description: Success
+
+  # ───────────────── Categories ─────────────────
+  /categories:
+    get:
+      tags: [Categories]
+      summary: List categories
+      responses:
+        200:
+          description: Success
+
+    post:
+      tags: [Categories]
+      summary: Create category (Admin)
+      security: [{ BearerAuth: [] }]
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateCategory' }
+      responses:
+        201:
+          description: Created
+
+  /categories/{id}:
+    get:
+      tags: [Categories]
+      summary: Get category by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { $ref: '#/components/schemas/UUID' }
+      responses:
+        200:
+          description: Success
+
+    put:
+      tags: [Categories]
+      summary: Update category (Admin)
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { $ref: '#/components/schemas/UUID' }
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateCategory' }
+      responses:
+        200:
+          description: Updated
+
+    delete:
+      tags: [Categories]
+      summary: Delete category (Admin)
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { $ref: '#/components/schemas/UUID' }
+      responses:
+        204:
+          description: Deleted
+
+  # ───────────────── Tags ─────────────────
+  /tags:
+    get:
+      tags: [Tags]
+      summary: List tags
+      responses:
+        200:
+          description: Success
+
+    post:
+      tags: [Tags]
+      summary: Create tag (Admin)
+      security: [{ BearerAuth: [] }]
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateTag' }
+      responses:
+        201:
+          description: Created
+
+  /tags/{id}:
+    delete:
+      tags: [Tags]
+      summary: Delete tag (Admin)
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { $ref: '#/components/schemas/UUID' }
+      responses:
+        204:
+          description: Deleted
+
+  # ───────────────── Document Types ─────────────────
+  /document-types:
+    get:
+      tags: [Document Types]
+      summary: List document types
+      responses:
+        200:
+          description: Success
+
+    post:
+      tags: [Document Types]
+      summary: Create document type (Admin)
+      security: [{ BearerAuth: [] }]
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateDocumentType' }
+      responses:
+        201:
+          description: Created
+
+  /document-types/{id}:
+    get:
+      tags: [Document Types]
+      summary: Get document type by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { $ref: '#/components/schemas/UUID' }
+      responses:
+        200:
+          description: Success
+
+  # ───────────────── System Settings ─────────────────
+  /settings:
+    get:
+      tags: [System Settings]
+      summary: List public settings
+      responses:
+        200:
+          description: Success
+
+    post:
+      tags: [System Settings]
+      summary: Upsert setting (Admin)
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SystemSetting'
+      responses:
+        200:
+          description: Upserted
+        201:
+          description: Created
+
+  /settings/all:
+    get:
+      tags: [System Settings]
+      summary: List all settings (Admin)
+      security:
+        - BearerAuth: []
+      responses:
+        200:
+          description: Success
+
+  /settings/{key}:
+    get:
+      tags: [System Settings]
+      summary: Get setting by key
+      parameters:
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+    put:
+      tags: [System Settings]
+      summary: Update setting by key (Admin)
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SystemSetting'
+      responses:
+        200:
+          description: System setting updated
+    delete:
+      tags: [System Settings]
+      summary: Delete setting by key (Admin)
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        204:
+          description: Deleted
+  /health:
+    get:
+      tags: [Health]
+      responses:
+        200:
+          description: Service healthy
+        503:
+          description: Service degraded

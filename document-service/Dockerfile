@@ -41,7 +41,7 @@ RUN npm ci --omit=dev \
 
 # Copy compiled output from builder
 COPY --from=builder /app/dist ./dist
-
+COPY src ./src
 # Create required runtime folders
 RUN mkdir -p logs uploads \
     && chown -R nodejs:nodejs /app
