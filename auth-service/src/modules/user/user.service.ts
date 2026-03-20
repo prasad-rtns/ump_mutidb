@@ -49,7 +49,14 @@ export class UserService {
   async updateUser(id: string, data: UpdateUserDTO, updatedBy: string) {
     const existing = await this.dal.user.findById(id);
     if (!existing) throw new Error('User not found');
-    const updated = await this.dal.user.update(id, { ...(data as any), updatedBy });
+    const updatePayload: UpdateUserDTO = { ...data, updatedBy };
+    if (typeof data.password === 'string') {
+      const trimmedPassword = data.password.trim();
+      updatePayload.password = trimmedPassword
+        ? await bcrypt.hash(trimmedPassword, BCRYPT_ROUNDS)
+        : undefined;
+    }
+    const updated = await this.dal.user.update(id, updatePayload);
     if (!updated) throw new Error('Update failed');
     await this._invalidateCache(id);
     logger.info('User updated', { userId: id, updatedBy });

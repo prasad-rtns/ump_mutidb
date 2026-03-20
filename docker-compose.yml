@@ -1,26 +1,24 @@
-version: '3.9'
-
 services:
   # ─── Infrastructure ───────────────────────────────────────────────────────────
-  postgres:
-    image: postgres:15-alpine
-    container_name: ump_postgres
+  mssql:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: ump_mssql
     restart: unless-stopped
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-ump_user}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ump_pass_2024}
-      POSTGRES_DB: ${POSTGRES_DB:-ump_auth}
+      ACCEPT_EULA: Y
+      SA_PASSWORD: ${MSSQL_SA_PASSWORD:-Ump_Pass@2024}
+      MSSQL_DB: ${MSSQL_DB:-ump_db}
     ports:
-      - "5433:5432"
+      - "1435:1433"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./scripts/init-postgres.sql:/docker-entrypoint-initdb.d/init.sql
+      - mssql_data:/var/opt/mssql
+      - ./scripts/init-mssql.sql:/scripts/init-mssql.sql
     networks:
       - ump_network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-ump_user} -d ${POSTGRES_DB:-ump_auth}"]
-      interval: 10s
-      timeout: 5s
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost,1433 -U sa -P '${MSSQL_SA_PASSWORD:-Ump_Pass@2024}' -C -Q 'SELECT 1'"]
+      interval: 15s
+      timeout: 10s
       retries: 5
   mongodb:
     image: mongo:7.0
@@ -72,7 +70,7 @@ services:
     ports:
       - "6001:6001"
     depends_on:
-      postgres: { condition: service_healthy }
+      mssql: { condition: service_healthy }
       mongodb: { condition: service_healthy }
       redis: { condition: service_healthy }
     networks:
@@ -94,7 +92,7 @@ services:
     ports:
       - "6002:6002"
     depends_on:
-      postgres: { condition: service_healthy }
+      mssql: { condition: service_healthy }
       redis: { condition: service_healthy }
       auth-service: { condition: service_started }
     networks:
@@ -116,6 +114,7 @@ services:
     ports:
       - "6003:6003"
     depends_on:
+      mssql: { condition: service_healthy }
       mongodb: { condition: service_healthy }
       redis: { condition: service_healthy }
       auth-service: { condition: service_started }
@@ -145,7 +144,7 @@ services:
       - ump_network
 
 volumes:
-  postgres_data:
+  mssql_data:
   mongo_data:
   redis_data:
   auth_logs:

@@ -1,6 +1,8 @@
 import { connectPostgres } from '../database/connection';
+import { getMssqlPool } from '../database/adapters/db.connection';
 import { getDocumentCollections } from '../database/mongo.schema';
 import { PgDocumentDAL }           from './pg/document.dal.pg';
+import { MssqlDocumentDAL }        from './mssql/document.dal.mssql';
 import { MongoDocumentDAL }        from './mongo/document.dal.mongo';
 import type { IDocumentDAL }       from './interfaces/document.dal.interface';
 
@@ -16,6 +18,13 @@ export class DocumentDALFactory {
       const db = await connectPostgres();
       return {
         document: new PgDocumentDAL(db as never),
+      };
+    }
+
+    if (dbType === 'mssql') {
+      const pool = await getMssqlPool();
+      return {
+        document: new MssqlDocumentDAL(pool),
       };
     }
 

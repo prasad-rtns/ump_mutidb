@@ -15,7 +15,9 @@ async function getDal(dbType: DatabaseType): Promise<MasterDALBundle> {
 // ─────────────────────────────────────────────────────────────────────────────
 export class CountryService {
   private constructor(private readonly dal: MasterDALBundle) {}
-  static async create(dbType: DatabaseType) { return new CountryService(await getDal(dbType)); }
+  static async create(dbType: DatabaseType) { 
+    return new CountryService(await getDal(dbType)); 
+  }
 
   async listAll() {
     const cached = await cache.get<unknown[]>('countries:all');

@@ -31,8 +31,8 @@ async function startServer() {
     logger.info('Starting document-service...');
 
     // Connect to databases
-    await getPgPool();
-    logger.info('✅ PostgreSQL connected');
+    await getMssqlPool();
+    logger.info('✅ MsSQL connected');
 
     await getMongoClient();
     logger.info('✅ MongoDB connected');

@@ -59,6 +59,18 @@ components:
         type: string
         format: uuid
 
+  parameters:
+    DbType:
+      in: header
+      name: X-DB-Type
+      required: false
+      description: Optional database override. Omit this header to use the service default database configured for the environment.
+      schema:
+        type: string
+        enum: [postgres, mysql, mssql, oracle, mongodb]
+        default: mssql
+      example: mssql
+
   schemas:
 
     # ───────── AUTH ─────────

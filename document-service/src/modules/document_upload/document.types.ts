@@ -21,6 +21,8 @@ export interface Document {
   isDeleted: boolean;
   deletedAt?: Date;
   deletedBy?: string;
+  createdBy?: string;
+  updatedBy?: string;
   createdAt: Date;
   updatedAt: Date;
 }

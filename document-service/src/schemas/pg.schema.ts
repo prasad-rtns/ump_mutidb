@@ -26,6 +26,8 @@ export const documents = pgTable('documents', {
   isDeleted: boolean('is_deleted').default(false).notNull(),
   deletedAt: timestamp('deleted_at'),
   deletedBy: varchar('deleted_by', { length: 255 }),
+  createdBy: varchar('created_by', { length: 255 }),
+  updatedBy: varchar('updated_by', { length: 255 }),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 }, (table) => ({
@@ -34,6 +36,8 @@ export const documents = pgTable('documents', {
   statusIdx: index('documents_status_idx').on(table.status),
   providerIdx: index('documents_provider_idx').on(table.provider),
   deletedIdx: index('documents_is_deleted_idx').on(table.isDeleted),
+  createdByIdx: index('documents_created_by_idx').on(table.createdBy),
+  updatedByIdx: index('documents_updated_by_idx').on(table.updatedBy),
   createdAtIdx: index('documents_created_at_idx').on(table.createdAt),
   keyIdx: uniqueIndex('documents_key_idx').on(table.key),
 }));

@@ -2,6 +2,11 @@
   "name": "ump-platform",
   "version": "1.0.0",
   "private": true,
+  "workspaces": [
+    "auth-service",
+    "master-service",
+    "document-service"
+  ],
   "description": "User Management Platform — npm workspaces monorepo",
   "scripts": {
     "build:shared": "npm run build --workspace=shared",

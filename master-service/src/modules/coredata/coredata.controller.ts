@@ -11,7 +11,9 @@ export const CountryController = {
     return ResponseUtil.success(res, await (await CountryService.create(db(req))).listAll()); 
   },
   async getById(req: Request, res: Response) { return ResponseUtil.success(res, await (await CountryService.create(db(req))).getById(req.params.id)); },
-  async create(req: Request, res: Response) { return ResponseUtil.created(res, await (await CountryService.create(db(req))).create(req.body)); },
+  async create(req: Request, res: Response) { 
+    return ResponseUtil.created(res, await (await CountryService.create(db(req))).create(req.body)); 
+  },
   async update(req: Request, res: Response) { return ResponseUtil.success(res, await (await CountryService.create(db(req))).update(req.params.id, req.body)); },
 };
 

@@ -334,3 +334,15 @@ set -a
 source .env.local
 npx drizzle-kit push --config=drizzle.pg.config.ts
 ```
+
+## MS SQL Migration
+
+``` BASH
+MSYS_NO_PATHCONV=1 docker exec -i ump_mssql /opt/mssql-tools18/bin/sqlcmd -S localhost,1433 -U sa -P "Ump_Pass@2024" -C -i /scripts/init-mssql.sql
+```
+
+``` POWERSHELL
+npm.cmd --workspace auth-service run migrate:mssql
+npm.cmd --workspace master-service run migrate:mssql
+npm.cmd --workspace document-service run migrate:mssql
+```

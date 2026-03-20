@@ -9,6 +9,7 @@
     "start": "node dist/server.js",
     "migrate:pg": "drizzle-kit push --config=drizzle.pg.config.ts",
     "migrate:mysql": "drizzle-kit push --config=drizzle.mysql.config.ts",
+    "migrate:mssql": "node ../scripts/run-mssql-migrations.js --dir ./src/database/migrations/mssql",
     "migrate:generate:pg": "drizzle-kit generate --config=drizzle.pg.config.ts",
     "lint": "eslint src --ext .ts",
     "test": "jest --coverage",

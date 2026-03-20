@@ -42,10 +42,12 @@ export class MssqlCountryDAL implements ICountryDAL {
     const r = await this.pool.request()
       .input('name', data.name)
       .input('code', data.code)
+      .input('dial_code', data.dialCode ?? null)
+      .input('currency', data.currency ?? null)
       .query(`
-        INSERT INTO countries (id, name, code, is_active, created_at, updated_at)
+        INSERT INTO countries (id, name, code, dial_code, currency, is_active, created_at, updated_at)
         OUTPUT INSERTED.*
-        VALUES (NEWID(), @name, @code, 1, GETDATE(), GETDATE())
+        VALUES (NEWID(), @name, @code, @dial_code, @currency, 1, GETDATE(), GETDATE())
       `);
     return r.recordset[0];
   }

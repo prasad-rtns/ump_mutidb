@@ -7,7 +7,9 @@
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
     "build": "tsc",
     "start": "node dist/server.js",
-    "migrate:pg": "drizzle-kit push --config=drizzle.config.ts",
+    "migrate:pg": "drizzle-kit push --config=drizzle.pg.config.ts",
+    "migrate:mysql": "drizzle-kit push --config=drizzle.mysql.config.ts",
+    "migrate:mssql": "node ../scripts/run-mssql-migrations.js --dir ./src/database/migrations/mssql",
     "lint": "eslint src --ext .ts"
   },
   "dependencies": {

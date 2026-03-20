@@ -7,6 +7,7 @@
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
     "build": "tsc && cp -r src/docs dist/docs",
     "start": "node dist/server.js",
+    "migrate:mssql": "node ../scripts/run-mssql-migrations.js --dir ./src/database/migrations/mssql",
     "lint": "eslint src --ext .ts"
   },
   "dependencies": {
