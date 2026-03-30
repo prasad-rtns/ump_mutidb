@@ -16,7 +16,6 @@ import {
   notFoundHandler,
   DatabaseType
 } from '@prasad-rtns/shared';
-//import { checkDbHealth } from './database/connection';
 import { checkDbHealth } from './database/adapters/db.connection';
 import { ResponseUtil } from '@prasad-rtns/shared';
 import logger from './database/logger';
@@ -68,7 +67,7 @@ app.get('/metrics', async (_req, res) => {
 
 // ─── Health Check ──────────────────────────────────────────────────────────────
 app.get('/health', async (_req, res) => {
-  const dbType = (process.env.DEFAULT_DB_TYPE || 'postgres') as DatabaseType;
+  const dbType = (process.env.DEFAULT_DB_TYPE || 'mysql') as DatabaseType;
   const dbHealth = await checkDbHealth(dbType);
   const allHealthy = Object.values(dbHealth).some(Boolean);
   return ResponseUtil.success(res, {

@@ -68,8 +68,8 @@ components:
       schema:
         type: string
         enum: [postgres, mysql, mssql, oracle, mongodb]
-        default: mssql
-      example: mssql
+        default: mysql
+      example: mysql
 
   schemas:
 

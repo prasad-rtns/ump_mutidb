@@ -86,7 +86,7 @@ export const dbTypeSwitcher = (req: Request, _res: Response, next: NextFunction)
   if (dbTypeHeader && validTypes.includes(dbTypeHeader.toLowerCase())) {
     req.dbType = dbTypeHeader.toLowerCase() as Request['dbType'];
   } else {
-    req.dbType = (process.env.DEFAULT_DB_TYPE || 'postgres') as Request['dbType'];
+    req.dbType = (process.env.DEFAULT_DB_TYPE || 'mysql') as Request['dbType'];
   }
   next();
 };

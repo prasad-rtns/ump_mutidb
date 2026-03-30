@@ -1,24 +1,25 @@
 services:
   # ─── Infrastructure ───────────────────────────────────────────────────────────
-  mssql:
-    image: mcr.microsoft.com/mssql/server:2022-latest
-    container_name: ump_mssql
+  mysql:
+    image: mysql:8.0
+    container_name: ump_mysql
     restart: unless-stopped
     environment:
-      ACCEPT_EULA: Y
-      SA_PASSWORD: ${MSSQL_SA_PASSWORD:-Ump_Pass@2024}
-      MSSQL_DB: ${MSSQL_DB:-ump_db}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root_pass}
+      MYSQL_DATABASE: ${MYSQL_DB:-ump_db}
+      MYSQL_USER: ${MYSQL_USER:-ump_user}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-ump_pass}
     ports:
-      - "1435:1433"
+      - "3305:3306"
     volumes:
-      - mssql_data:/var/opt/mssql
-      - ./scripts/init-mssql.sql:/scripts/init-mssql.sql
+      - mysql_data:/var/lib/mysql
+      - ./scripts/init-mysql.sql:/docker-entrypoint-initdb.d/init.sql
     networks:
       - ump_network
     healthcheck:
-      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost,1433 -U sa -P '${MSSQL_SA_PASSWORD:-Ump_Pass@2024}' -C -Q 'SELECT 1'"]
-      interval: 15s
-      timeout: 10s
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "${MYSQL_USER:-ump_user}", "-p${MYSQL_PASSWORD:-ump_pass}"]
+      interval: 10s
+      timeout: 5s
       retries: 5
   mongodb:
     image: mongo:7.0
@@ -70,7 +71,7 @@ services:
     ports:
       - "6001:6001"
     depends_on:
-      mssql: { condition: service_healthy }
+      mysql: { condition: service_healthy }
       mongodb: { condition: service_healthy }
       redis: { condition: service_healthy }
     networks:
@@ -92,7 +93,7 @@ services:
     ports:
       - "6002:6002"
     depends_on:
-      mssql: { condition: service_healthy }
+      mysql: { condition: service_healthy }
       redis: { condition: service_healthy }
       auth-service: { condition: service_started }
     networks:
@@ -114,7 +115,7 @@ services:
     ports:
       - "6003:6003"
     depends_on:
-      mssql: { condition: service_healthy }
+      mysql: { condition: service_healthy }
       mongodb: { condition: service_healthy }
       redis: { condition: service_healthy }
       auth-service: { condition: service_started }
@@ -144,7 +145,7 @@ services:
       - ump_network
 
 volumes:
-  mssql_data:
+  mysql_data:
   mongo_data:
   redis_data:
   auth_logs:

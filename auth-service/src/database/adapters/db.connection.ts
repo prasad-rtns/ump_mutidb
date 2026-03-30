@@ -8,6 +8,7 @@ import { MongoClient, Db } from 'mongodb';
 // ─────────────────────────────────────────────────────────────────────────────
 let _pgPool:    import('pg').Pool                 | null = null;
 let _mysqlPool: import('mysql2/promise').Pool     | null = null;
+let _mysqlDb:   import('drizzle-orm/mysql2').MySql2Database<any> | null = null;
 let _mssqlPool: import('mssql').ConnectionPool   | null = null;
 let _oraclePool: import('oracledb').Pool         | null = null;
 let _mongoClient: import('mongodb').MongoClient  | null = null;
@@ -59,6 +60,18 @@ export async function getMysqlPool() {
   });
   logger.info('MySQL pool created');
   return _mysqlPool;
+}
+
+export async function getMysqlDB() {
+  if (_mysqlDb) return _mysqlDb;
+
+  const { drizzle } = await import('drizzle-orm/mysql2');
+  const pool = await getMysqlPool();
+
+  _mysqlDb = drizzle(pool);
+  logger.info('MySQL Drizzle instance created');
+
+  return _mysqlDb;
 }
 
 // ─── MSSQL (SQL Server) ───────────────────────────────────────────────────────

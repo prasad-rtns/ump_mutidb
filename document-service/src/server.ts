@@ -2,18 +2,16 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 import http from 'http';
-import app from './app';
-//import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
-//import { connectPostgres, connectMongo, disconnectAll } from './database/connection';
-import { getPgPool, getMssqlPool, getOraclePool, getMongoClient, closeAllPools } from './database/adapters/db.connection';
-import { RedisClient } from '@prasad-rtns/shared';
+import app from './app';
+import { getPgPool, getMssqlPool, getOraclePool, getMongoClient, getMysqlPool, closeAllPools } from './database/adapters/db.connection';
+import { DatabaseType, RedisClient } from '@prasad-rtns/shared';
 import logger from './database/logger';
 
 const PORT = parseInt(process.env.PORT || '6003');
 const HOST = process.env.HOST || '0.0.0.0';
-//const app = express();
+
 app.use(
   helmet({
     contentSecurityPolicy: false,
@@ -26,30 +24,45 @@ app.use(
   })
 );
 
+async function connectDatabase(dbType: DatabaseType) {
+  switch (dbType) {
+    case 'postgres':
+      await getPgPool();
+      break;
+    case 'mysql':
+      await getMysqlPool();
+      break;
+    case 'mssql':
+      await getMssqlPool();
+      break;
+    case 'oracle':
+      await getOraclePool();
+      break;
+    case 'mongodb':
+      await getMongoClient();
+      break;
+  }
+  logger.info('Database connected', { dbType });
+}
+
 async function startServer() {
   try {
     logger.info('Starting document-service...');
 
-    // Connect to databases
-    await getMssqlPool();
-    logger.info('✅ MsSQL connected');
+    const dbType = (process.env.DEFAULT_DB_TYPE || 'mysql') as DatabaseType;
+    await connectDatabase(dbType);
 
-    await getMongoClient();
-    logger.info('✅ MongoDB connected');
-
-    // Connect Redis
     await RedisClient.getInstance();
-    logger.info('✅ Redis connected');
+    logger.info('Redis connected');
 
     const server = http.createServer(app);
 
     server.listen(PORT, HOST, () => {
-      logger.info(`🚀 Document Service running at http://${HOST}:${PORT}`);
-      logger.info(`📚 Swagger docs: http://${HOST}:${PORT}/api/docs`);
-      logger.info(`🏥 Health check: http://${HOST}:${PORT}/health`);
+      logger.info(`Document Service running at http://${HOST}:${PORT}`);
+      logger.info(`Swagger docs: http://${HOST}:${PORT}/api/docs`);
+      logger.info(`Health check: http://${HOST}:${PORT}/health`);
     });
 
-    // ─── Graceful shutdown ──────────────────────────────────────────────────────
     const gracefulShutdown = async (signal: string) => {
       logger.info(`Received ${signal}, shutting down gracefully...`);
       server.close(async () => {
@@ -71,7 +84,6 @@ async function startServer() {
       logger.error('Unhandled Rejection:', { reason });
       gracefulShutdown('unhandledRejection');
     });
-
   } catch (error) {
     logger.error('Failed to start server:', error);
     process.exit(1);

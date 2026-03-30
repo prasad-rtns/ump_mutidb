@@ -46,6 +46,7 @@ export const users = mysqlTable('users', {
   email: varchar('email', { length: 255 }).notNull().unique(),
   password: varchar('password', { length: 255 }).notNull(),
   firstName: varchar('first_name', { length: 100 }).notNull(),
+  middleName: varchar('middle_name', { length: 100 }),
   lastName: varchar('last_name', { length: 100 }).notNull(),
   phone: varchar('phone', { length: 20 }),
   avatar: text('avatar'),
@@ -54,7 +55,12 @@ export const users = mysqlTable('users', {
   designationId: varchar('designation_id', { length: 36 }).notNull(),
   status: mysqlEnum('status', ['active', 'inactive', 'suspended']).default('active').notNull(),
   isEmailVerified: boolean('is_email_verified').default(false).notNull(),
+  emailVerificationToken: text('email_verification_token'),
+  passwordResetToken: text('password_reset_token'),
+  passwordResetExpires: timestamp('password_reset_expires'),
   failedLoginAttempts: int('failed_login_attempts').default(0).notNull(),
+  lockUntil: timestamp('lock_until'),
+  twoFactorSecret: text('two_factor_secret'),
   twoFactorEnabled: boolean('two_factor_enabled').default(false).notNull(),
   lastLoginAt: timestamp('last_login_at'),
   lastLoginIp: varchar('last_login_ip', { length: 45 }),
@@ -84,4 +90,21 @@ export const sessions = mysqlTable('sessions', {
   userIdx: index('sessions_user_idx').on(t.userId),
 }));
 
-export const mysqlSchema = { roles, departments, designations, users, sessions };
+export const auditLogs = mysqlTable('audit_logs', {
+  id: varchar('id', { length: 36 }).primaryKey(),
+  userId: varchar('user_id', { length: 36 }),
+  action: varchar('action', { length: 100 }).notNull(),
+  entity: varchar('entity', { length: 100 }).notNull(),
+  entityId: varchar('entity_id', { length: 36 }),
+  oldValues: json('old_values').$type<Record<string, unknown> | null>(),
+  newValues: json('new_values').$type<Record<string, unknown> | null>(),
+  ipAddress: varchar('ip_address', { length: 45 }),
+  userAgent: text('user_agent'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (t) => ({
+  userIdx: index('audit_user_idx').on(t.userId),
+  entityIdx: index('audit_entity_idx').on(t.entity, t.entityId),
+  createdAtIdx: index('audit_created_idx').on(t.createdAt),
+}));
+
+export const mysqlSchema = { roles, departments, designations, users, sessions, auditLogs };

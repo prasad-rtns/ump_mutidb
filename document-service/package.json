@@ -5,8 +5,9 @@
   "main": "dist/server.js",
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
-    "build": "tsc && cp -r src/docs dist/docs",
+    "build": "tsc && node -e \"require('fs').cpSync('src/docs','dist/docs',{ recursive: true })\"",
     "start": "node dist/server.js",
+    "migrate:mysql": "drizzle-kit push --config=drizzle.mysql.config.ts",
     "migrate:mssql": "node ../scripts/run-mssql-migrations.js --dir ./src/database/migrations/mssql",
     "lint": "eslint src --ext .ts"
   },

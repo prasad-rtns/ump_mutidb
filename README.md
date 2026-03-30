@@ -316,6 +316,7 @@ curl -X POST http://localhost:3003/api/documents/upload-bulk \
 
 ## SQL Generate
 `npx drizzle-kit generate --config=drizzle.pg.config.ts`
+`npx drizzle-kit generate --config=drizzle.mysql.config.ts`
 This creates SQL file inside:src/database/migrations/pg
 
 ## Apply Migration - For production-safe workflow:
@@ -324,6 +325,7 @@ This creates SQL file inside:src/database/migrations/pg
 ## Alternative (Dev Only Fast Way)
 If you are in development and don't care about migration files:
 `npx drizzle-kit push --config=drizzle.pg.config.ts`
+`npx drizzle-kit push --config=drizzle.mysql.config.ts`
 
 ## DB Push
 `npx drizzle-kit push --config=drizzle.pg.config.ts`
@@ -333,6 +335,10 @@ If you are in development and don't care about migration files:
 set -a
 source .env.local
 npx drizzle-kit push --config=drizzle.pg.config.ts
+```
+## MySQL document DB Create 
+```
+docker exec -it ump_mysql mysql -uroot -proot_pass_2024 -e "CREATE DATABASE IF NOT EXISTS ump_documents; GRANT ALL PRIVILEGES ON ump_documents.* TO 'ump_user'@'%'; GRANT ALL PRIVILEGES ON ump_documents.* TO 'ump_user'@'localhost'; FLUSH PRIVILEGES;"
 ```
 
 ## MS SQL Migration
