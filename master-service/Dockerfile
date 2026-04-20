@@ -8,14 +8,17 @@ WORKDIR /app
 # Copy only this service's manifests
 COPY package*.json ./
 
-# Install all dependencies (including dev for build)
-RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi
+# Install dependencies for isolated service builds.
+RUN npm install
 
 # Copy full service source (including src/shared)
 COPY . .
 
 # Compile TypeScript
 RUN npm run build
+
+# Trim builder dependencies down to production before handing off to runtime.
+RUN npm prune --omit=dev
 
 
 # ─────────────────────────────────────────────────────────────
@@ -35,15 +38,13 @@ WORKDIR /app
 # Copy package manifests
 COPY package*.json ./
 
-# Install production dependencies only
-RUN if [ -f package-lock.json ]; then npm ci --omit=dev; else npm install --omit=dev; fi \
-    && npm cache clean --force
-
 # Copy compiled output
 COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/node_modules ./node_modules
 COPY src ./src
 # Ensure correct permissions
 RUN mkdir -p logs \
+    && npm cache clean --force \
     && chown -R nodejs:nodejs /app
 
 USER nodejs

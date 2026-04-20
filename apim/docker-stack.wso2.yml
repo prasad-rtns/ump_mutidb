@@ -1,0 +1,43 @@
+version: "3.8"
+
+services:
+  wso2-apim:
+    image: ump-wso2-apim:4.4.0
+    hostname: wso2-apim
+    ports:
+      - target: 9443
+        published: 9443
+        protocol: tcp
+        mode: ingress
+      - target: 8243
+        published: 8243
+        protocol: tcp
+        mode: ingress
+      - target: 8280
+        published: 8280
+        protocol: tcp
+        mode: ingress
+    networks:
+      - ump_wso2
+    volumes:
+      - wso2_repository_database:/home/wso2carbon/wso2am-4.4.0/repository/database
+      - wso2_repository_deployment:/home/wso2carbon/wso2am-4.4.0/repository/deployment/server
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+        delay: 10s
+      update_config:
+        order: stop-first
+      placement:
+        constraints:
+          - node.role == manager
+
+networks:
+  ump_wso2:
+    driver: overlay
+    attachable: true
+
+volumes:
+  wso2_repository_database:
+  wso2_repository_deployment:

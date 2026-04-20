@@ -30,6 +30,7 @@
     "glob": "^13.0.6",
     "helmet": "^7.1.0",
     "ioredis": "^5.9.3",
+    "jose": "^5.9.6",
     "jsonwebtoken": "^9.0.2",
     "mongodb": "^6.3.0",
     "morgan": "^1.10.0",

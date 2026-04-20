@@ -1,7 +1,8 @@
 import { Router } from 'express';
-import { asyncHandler, authenticate, authorize, departmentScope, selfOrAdmin } from '@prasad-rtns/shared';
+import { asyncHandler } from '@prasad-rtns/shared';
 import { UserController } from '../../modules/user/user.controller';
 import { registerValidator } from '../auth/auth.validator';
+import { authenticate, authorize, departmentScope, selfOrAdmin } from '../../middleware/auth.middleware';
 import {
   updateUserValidator,
   paginationValidator,

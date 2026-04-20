@@ -4,8 +4,7 @@ import {
   CountryController, StateController, CityController,
   CategoryController, TagController, DocumentTypeController, SettingsController,
 } from './coredata.controller';
-import { authenticate, authorize } from '@prasad-rtns/shared';
-import { userAuthenticate } from '../../middleware/auth.middleware';
+import { authenticate, authorize, userAuthenticate } from '../../middleware/auth.middleware';
 
 const router = Router();
 //router.use(userAuthenticate);

@@ -1,7 +1,8 @@
 import { Router } from 'express';
-import { asyncHandler, authenticate, authRateLimit } from '@prasad-rtns/shared';
+import { asyncHandler, authRateLimit } from '@prasad-rtns/shared';
 import { AuthController } from '../../modules/auth/auth.controller';
 import { UserController } from '../../modules/user/user.controller';
+import { authenticate } from '../../middleware/auth.middleware';
 import {
   registerValidator,
   loginValidator,

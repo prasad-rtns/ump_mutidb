@@ -82,6 +82,9 @@ export class UserService {
   }
 
   async changePassword(userId: string, input: ChangePasswordInput) {
+    if ((process.env.AUTH_PROVIDER || 'local').toLowerCase() === 'wso2') {
+      throw new Error('Password changes are managed by WSO2 when AUTH_PROVIDER=wso2');
+    }
     if (input.newPassword !== input.confirmPassword) throw new Error('Passwords do not match');
     const user = await this.dal.user.findById(userId);
     if (!user) throw new Error('User not found');

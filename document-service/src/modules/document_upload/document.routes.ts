@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { asyncHandler } from '@prasad-rtns/shared';
 import { DocumentController } from './document.controller';
 import { uploadMiddleware, multerErrorHandler, virusScan } from '../../middleware/upload.middleware';
-import { authenticate, authorize } from '@prasad-rtns/shared';
+import { authenticate, authorize } from '../../middleware/auth.middleware';
 
 const router = Router();
 

@@ -1,0 +1,740 @@
+openapi: 3.0.3
+
+info:
+  title: UMP Identity API
+  version: 1.0.0
+  description: Authentication, user administration, roles, departments, and designations exposed by auth-service.
+
+servers:
+  - url: https://localhost:8243/identity
+    description: WSO2 APIM Gateway
+
+x-wso2-basePath: /identity
+x-wso2-production-endpoints:
+  urls:
+    - http://auth-service:6001/api/v1
+  type: http
+x-wso2-sandbox-endpoints:
+  urls:
+    - http://auth-service:6001/api/v1
+  type: http
+x-wso2-transports:
+  - https
+  - http
+x-wso2-throttling-tier: Unlimited
+x-wso2-auth-header: Authorization
+x-wso2-cors:
+  corsConfigurationEnabled: true
+  accessControlAllowOrigins:
+    - https://localhost:9443
+    - https://localhost:8243
+    - http://localhost:8280
+    - http://localhost:8082
+  accessControlAllowHeaders:
+    - authorization
+    - Authorization
+    - Content-Type
+    - content-type
+    - accept
+    - origin
+    - x-requested-with
+    - X-DB-Type
+  accessControlAllowMethods:
+    - GET
+    - POST
+    - PUT
+    - PATCH
+    - DELETE
+    - OPTIONS
+  accessControlAllowCredentials: true
+
+tags:
+  - name: Auth
+  - name: Users
+  - name: Roles
+  - name: Departments
+  - name: Designations
+  - name: Health
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    DbType:
+      in: header
+      name: X-DB-Type
+      required: false
+      description: Optional database override.
+      schema:
+        type: string
+        enum: [postgres, mysql, mssql, oracle, mongodb]
+        default: mysql
+    IdParam:
+      in: path
+      name: id
+      required: true
+      schema:
+        type: string
+        format: uuid
+    PageParam:
+      in: query
+      name: page
+      schema:
+        type: integer
+        default: 1
+    LimitParam:
+      in: query
+      name: limit
+      schema:
+        type: integer
+        default: 10
+    SearchParam:
+      in: query
+      name: search
+      schema:
+        type: string
+    SortByParam:
+      in: query
+      name: sortBy
+      schema:
+        type: string
+        default: createdAt
+    SortOrderParam:
+      in: query
+      name: sortOrder
+      schema:
+        type: string
+        enum: [asc, desc]
+        default: desc
+    UserStatusParam:
+      in: query
+      name: status
+      schema:
+        type: string
+        enum: [active, inactive, suspended]
+    DepartmentIdParam:
+      in: query
+      name: departmentId
+      schema:
+        type: string
+        format: uuid
+    RoleIdParam:
+      in: query
+      name: roleId
+      schema:
+        type: string
+        format: uuid
+    DesignationDepartmentIdParam:
+      in: query
+      name: departmentId
+      schema:
+        type: string
+        format: uuid
+  schemas:
+    RegisterRequest:
+      type: object
+      required: [username, email, password, firstName, lastName, roleId, departmentId, designationId]
+      properties:
+        username: { type: string, example: john_doe }
+        email: { type: string, format: email, example: john@example.com }
+        password: { type: string, format: password, example: Secret@123 }
+        firstName: { type: string, example: John }
+        middleName: { type: string, example: M }
+        lastName: { type: string, example: Doe }
+        phone: { type: string, example: "+919876543210" }
+        roleId: { type: string, format: uuid }
+        departmentId: { type: string, format: uuid }
+        designationId: { type: string, format: uuid }
+      example:
+        username: john_doe
+        email: john@example.com
+        password: Secret@123
+        firstName: John
+        middleName: M
+        lastName: Doe
+        phone: "+919876543210"
+        roleId: 550e8400-e29b-41d4-a716-446655440003
+        departmentId: 660e8400-e29b-41d4-a716-446655440005
+        designationId: 770e8400-e29b-41d4-a716-446655440006
+    LoginRequest:
+      type: object
+      required: [identifier, password]
+      properties:
+        identifier: { type: string, example: john@example.com }
+        password: { type: string, format: password, example: Secret@123 }
+      example:
+        identifier: admin@ump-platform.com
+        password: Admin@1234
+    RefreshRequest:
+      type: object
+      properties:
+        refreshToken: { type: string, example: eyJhbGciOi... }
+      example:
+        refreshToken: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.refresh.token
+    ChangePasswordRequest:
+      type: object
+      required: [currentPassword, newPassword]
+      properties:
+        currentPassword: { type: string, format: password }
+        newPassword: { type: string, format: password }
+      example:
+        currentPassword: OldPassword@123
+        newPassword: NewPassword@123
+    ChangeStatusRequest:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [active, inactive, suspended]
+      example:
+        status: suspended
+    RoleRequest:
+      type: object
+      required: [name, slug]
+      properties:
+        name: { type: string }
+        slug: { type: string, enum: [admin, lead, user] }
+        permissions: { type: object, additionalProperties: true }
+        isActive: { type: boolean }
+    DepartmentRequest:
+      type: object
+      required: [name, code]
+      properties:
+        name: { type: string }
+        code: { type: string }
+        parentId: { type: string, format: uuid }
+        managerId: { type: string, format: uuid }
+        isActive: { type: boolean }
+      example:
+        name: Information Technology
+        code: IT
+        parentId: 660e8400-e29b-41d4-a716-446655440001
+        managerId: 550e8400-e29b-41d4-a716-446655440000
+        isActive: true
+    DesignationRequest:
+      type: object
+      required: [name, code]
+      properties:
+        name: { type: string }
+        code: { type: string }
+        departmentId: { type: string, format: uuid }
+        level: { type: integer }
+        isActive: { type: boolean }
+      example:
+        name: Senior Developer
+        code: SD001
+        departmentId: 660e8400-e29b-41d4-a716-446655440005
+        level: 3
+        isActive: true
+
+paths:
+  /auth/register:
+    post:
+      tags: [Auth]
+      summary: Register a user in local auth mode.
+      security: []
+      x-auth-type: None
+      x-throttling-tier: Unlimited
+      parameters:
+        - $ref: '#/components/parameters/DbType'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        "201":
+          description: User registered
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Login in local auth mode.
+      security: []
+      x-auth-type: None
+      x-throttling-tier: Unlimited
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        "200":
+          description: Login successful
+          content:
+            application/json:
+              examples:
+                success:
+                  value:
+                    success: true
+                    message: Login successful
+                    data:
+                      user:
+                        id: 550e8400-e29b-41d4-a716-446655440000
+                        username: admin
+                        email: admin@ump-platform.com
+                        firstName: Platform
+                        lastName: Admin
+                        status: active
+                        role:
+                          id: 550e8400-e29b-41d4-a716-446655440003
+                          name: Administrator
+                          slug: admin
+                      accessToken: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.access.token
+                      expiresIn: 3600
+  /auth/refresh:
+    post:
+      tags: [Auth]
+      summary: Refresh token in local auth mode.
+      security: []
+      x-auth-type: None
+      x-throttling-tier: Unlimited
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshRequest'
+      responses:
+        "200":
+          description: Token refreshed
+  /auth/logout:
+    post:
+      tags: [Auth]
+      summary: Logout current session.
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Logout completed
+  /auth/logout-all:
+    post:
+      tags: [Auth]
+      summary: Logout all sessions.
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Logout-all completed
+  /auth/me:
+    get:
+      tags: [Auth]
+      summary: Resolve the authenticated UMP user.
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Authenticated user
+          content:
+            application/json:
+              examples:
+                success:
+                  value:
+                    success: true
+                    message: Success
+                    data:
+                      id: 550e8400-e29b-41d4-a716-446655440000
+                      username: admin
+                      email: admin@ump-platform.com
+                      firstName: Platform
+                      lastName: Admin
+                      status: active
+                      role:
+                        id: 550e8400-e29b-41d4-a716-446655440003
+                        name: Administrator
+                        slug: admin
+                      department:
+                        id: 660e8400-e29b-41d4-a716-446655440005
+                        name: Information Technology
+                        code: IT
+                      designation:
+                        id: 770e8400-e29b-41d4-a716-446655440006
+                        name: Senior Developer
+                        code: SD001
+  /auth/change-password:
+    post:
+      tags: [Auth]
+      summary: Change password in local auth mode.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangePasswordRequest'
+      responses:
+        "200":
+          description: Password changed
+  /users:
+    get:
+      tags: [Users]
+      summary: List users.
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/LimitParam'
+        - $ref: '#/components/parameters/SearchParam'
+        - $ref: '#/components/parameters/SortByParam'
+        - $ref: '#/components/parameters/SortOrderParam'
+        - $ref: '#/components/parameters/UserStatusParam'
+        - $ref: '#/components/parameters/DepartmentIdParam'
+        - $ref: '#/components/parameters/RoleIdParam'
+      responses:
+        "200":
+          description: User list
+          content:
+            application/json:
+              examples:
+                success:
+                  value:
+                    success: true
+                    message: Success
+                    data:
+                      - id: 550e8400-e29b-41d4-a716-446655440000
+                        username: admin
+                        email: admin@ump-platform.com
+                        firstName: Platform
+                        lastName: Admin
+                        status: active
+                      - id: 550e8400-e29b-41d4-a716-446655440010
+                        username: john_doe
+                        email: john@example.com
+                        firstName: John
+                        lastName: Doe
+                        status: active
+                    pagination:
+                      page: 1
+                      limit: 10
+                      total: 2
+                      totalPages: 1
+    post:
+      tags: [Users]
+      summary: Create a user.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        "201":
+          description: User created
+          content:
+            application/json:
+              examples:
+                created:
+                  value:
+                    success: true
+                    message: User created successfully
+                    data:
+                      id: 550e8400-e29b-41d4-a716-446655440010
+                      username: john_doe
+                      email: john@example.com
+                      firstName: John
+                      lastName: Doe
+                      status: active
+  /users/dashboard:
+    get:
+      tags: [Users]
+      summary: Get dashboard metrics for the current user scope.
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Dashboard data
+  /users/{id}:
+    get:
+      tags: [Users]
+      summary: Get a user by ID.
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        "200":
+          description: User details
+    put:
+      tags: [Users]
+      summary: Update a user.
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        "200":
+          description: User updated
+    delete:
+      tags: [Users]
+      summary: Delete a user.
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        "200":
+          description: User deleted
+  /users/{id}/status:
+    patch:
+      tags: [Users]
+      summary: Change a user's status.
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangeStatusRequest'
+      responses:
+        "200":
+          description: User status changed
+          content:
+            application/json:
+              examples:
+                updated:
+                  value:
+                    success: true
+                    message: Success
+                    data:
+                      id: 550e8400-e29b-41d4-a716-446655440010
+                      status: suspended
+  /auth/master/roles:
+    get:
+      tags: [Roles]
+      summary: List roles.
+      responses:
+        "200":
+          description: Role list
+    post:
+      tags: [Roles]
+      summary: Create a role.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RoleRequest'
+      responses:
+        "201":
+          description: Role created
+  /auth/master/roles/{id}:
+    put:
+      tags: [Roles]
+      summary: Update a role.
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RoleRequest'
+      responses:
+        "200":
+          description: Role updated
+    delete:
+      tags: [Roles]
+      summary: Delete a role.
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        "200":
+          description: Role deleted
+  /auth/master/departments:
+    get:
+      tags: [Departments]
+      summary: List departments from auth-service master endpoints.
+      responses:
+        "200":
+          description: Department list
+    post:
+      tags: [Departments]
+      summary: Create a department.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DepartmentRequest'
+      responses:
+        "201":
+          description: Department created
+  /auth/master/departments/{id}:
+    get:
+      tags: [Departments]
+      summary: Get a department by ID.
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        "200":
+          description: Department details
+    put:
+      tags: [Departments]
+      summary: Update a department.
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DepartmentRequest'
+      responses:
+        "200":
+          description: Department updated
+    delete:
+      tags: [Departments]
+      summary: Delete a department.
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        "200":
+          description: Department deleted
+  /auth/master/designations:
+    get:
+      tags: [Designations]
+      summary: List designations.
+      parameters:
+        - $ref: '#/components/parameters/DesignationDepartmentIdParam'
+      responses:
+        "200":
+          description: Designation list
+    post:
+      tags: [Designations]
+      summary: Create a designation.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DesignationRequest'
+      responses:
+        "201":
+          description: Designation created
+  /auth/master/designations/{id}:
+    get:
+      tags: [Designations]
+      summary: Get a designation by ID.
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        "200":
+          description: Designation details
+    put:
+      tags: [Designations]
+      summary: Update a designation.
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DesignationRequest'
+      responses:
+        "200":
+          description: Designation updated
+    delete:
+      tags: [Designations]
+      summary: Delete a designation.
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        "200":
+          description: Designation deleted
+  /auth/departments:
+    get:
+      tags: [Departments]
+      summary: List departments from the dedicated department module.
+      responses:
+        "200":
+          description: Department list
+    post:
+      tags: [Departments]
+      summary: Create department from the dedicated department module.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DepartmentRequest'
+      responses:
+        "201":
+          description: Department created
+  /auth/departments/{id}:
+    get:
+      tags: [Departments]
+      summary: Get department from the dedicated department module.
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        "200":
+          description: Department details
+    put:
+      tags: [Departments]
+      summary: Update department from the dedicated department module.
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DepartmentRequest'
+      responses:
+        "200":
+          description: Department updated
+    delete:
+      tags: [Departments]
+      summary: Delete department from the dedicated department module.
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        "200":
+          description: Department deleted
+  /health:
+    get:
+      tags: [Health]
+      summary: Health check
+      security: []
+      x-auth-type: None
+      x-throttling-tier: Unlimited
+      responses:
+        "200":
+          description: Healthy
+        "503":
+          description: Degraded

@@ -1,0 +1,457 @@
+openapi: 3.0.3
+
+info:
+  title: UMP Master API
+  version: 1.0.0
+  description: Core data APIs exposed by master-service.
+
+servers:
+  - url: https://localhost:8243/master
+    description: WSO2 APIM Gateway
+
+x-wso2-basePath: /master
+x-wso2-production-endpoints:
+  urls:
+    - http://master-service:6002/api/v1/master
+  type: http
+x-wso2-sandbox-endpoints:
+  urls:
+    - http://master-service:6002/api/v1/master
+  type: http
+x-wso2-transports:
+  - https
+  - http
+x-wso2-throttling-tier: Unlimited
+x-wso2-auth-header: Authorization
+x-wso2-cors:
+  corsConfigurationEnabled: true
+  accessControlAllowOrigins:
+    - https://localhost:9443
+    - https://localhost:8243
+    - http://localhost:8280
+    - http://localhost:8082
+  accessControlAllowHeaders:
+    - authorization
+    - Authorization
+    - Content-Type
+    - content-type
+    - accept
+    - origin
+    - x-requested-with
+    - X-DB-Type
+  accessControlAllowMethods:
+    - GET
+    - POST
+    - PUT
+    - PATCH
+    - DELETE
+    - OPTIONS
+  accessControlAllowCredentials: true
+
+tags:
+  - name: Countries
+  - name: States
+  - name: Cities
+  - name: Categories
+  - name: Tags
+  - name: Document Types
+  - name: Settings
+  - name: Health
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    IdParam:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    KeyParam:
+      name: key
+      in: path
+      required: true
+      schema:
+        type: string
+    CountryIdParam:
+      name: countryId
+      in: query
+      schema:
+        type: string
+        format: uuid
+    StateIdParam:
+      name: stateId
+      in: query
+      schema:
+        type: string
+        format: uuid
+    SearchParam:
+      name: search
+      in: query
+      schema:
+        type: string
+  schemas:
+    CreateCountry:
+      type: object
+      required: [name, code]
+      properties:
+        name: { type: string }
+        code: { type: string }
+        dialCode: { type: string }
+        flag: { type: string }
+        currency: { type: string }
+        currencySymbol: { type: string }
+    CreateState:
+      type: object
+      required: [name, code, countryId]
+      properties:
+        name: { type: string }
+        code: { type: string }
+        countryId: { type: string, format: uuid }
+    CreateCity:
+      type: object
+      required: [name, stateId]
+      properties:
+        name: { type: string }
+        stateId: { type: string, format: uuid }
+        latitude: { type: number }
+        longitude: { type: number }
+    CreateCategory:
+      type: object
+      required: [name, code]
+      properties:
+        name: { type: string }
+        code: { type: string }
+        parentId: { type: string, format: uuid }
+        description: { type: string }
+        icon: { type: string }
+        sortOrder: { type: integer }
+        metadata: { type: object, additionalProperties: true }
+    CreateTag:
+      type: object
+      required: [name, slug]
+      properties:
+        name: { type: string }
+        slug: { type: string }
+        color: { type: string }
+    CreateDocumentType:
+      type: object
+      required: [name, code]
+      properties:
+        name: { type: string }
+        code: { type: string }
+        description: { type: string }
+        allowedMimeTypes:
+          type: array
+          items:
+            type: string
+        maxSizeMb: { type: integer }
+        isRequired: { type: boolean }
+    SystemSetting:
+      type: object
+      required: [key, value]
+      properties:
+        key: { type: string }
+        value: { type: string }
+        type: { type: string }
+        description: { type: string }
+        isPublic: { type: boolean }
+        category: { type: string }
+
+paths:
+  /countries:
+    get:
+      tags: [Countries]
+      summary: List countries
+      responses:
+        "200":
+          description: Country list
+    post:
+      tags: [Countries]
+      summary: Create country
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCountry'
+      responses:
+        "201":
+          description: Country created
+  /countries/{id}:
+    get:
+      tags: [Countries]
+      summary: Get country by ID
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        "200":
+          description: Country details
+    put:
+      tags: [Countries]
+      summary: Update country
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCountry'
+      responses:
+        "200":
+          description: Country updated
+  /states:
+    get:
+      tags: [States]
+      summary: List states
+      parameters:
+        - $ref: '#/components/parameters/CountryIdParam'
+      responses:
+        "200":
+          description: State list
+    post:
+      tags: [States]
+      summary: Create state
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateState'
+      responses:
+        "201":
+          description: State created
+  /states/{id}:
+    get:
+      tags: [States]
+      summary: Get state by ID
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        "200":
+          description: State details
+  /cities:
+    get:
+      tags: [Cities]
+      summary: List cities
+      parameters:
+        - $ref: '#/components/parameters/StateIdParam'
+        - $ref: '#/components/parameters/SearchParam'
+      responses:
+        "200":
+          description: City list
+    post:
+      tags: [Cities]
+      summary: Create city
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCity'
+      responses:
+        "201":
+          description: City created
+  /cities/{id}:
+    get:
+      tags: [Cities]
+      summary: Get city by ID
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        "200":
+          description: City details
+  /categories:
+    get:
+      tags: [Categories]
+      summary: List categories
+      parameters:
+        - $ref: '#/components/parameters/SearchParam'
+      responses:
+        "200":
+          description: Category list
+    post:
+      tags: [Categories]
+      summary: Create category
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCategory'
+      responses:
+        "201":
+          description: Category created
+  /categories/{id}:
+    get:
+      tags: [Categories]
+      summary: Get category by ID
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        "200":
+          description: Category details
+    put:
+      tags: [Categories]
+      summary: Update category
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCategory'
+      responses:
+        "200":
+          description: Category updated
+    delete:
+      tags: [Categories]
+      summary: Delete category
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        "204":
+          description: Category deleted
+  /tags:
+    get:
+      tags: [Tags]
+      summary: List tags
+      responses:
+        "200":
+          description: Tag list
+    post:
+      tags: [Tags]
+      summary: Create tag
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTag'
+      responses:
+        "201":
+          description: Tag created
+  /tags/{id}:
+    delete:
+      tags: [Tags]
+      summary: Delete tag
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        "204":
+          description: Tag deleted
+  /document-types:
+    get:
+      tags: [Document Types]
+      summary: List document types
+      responses:
+        "200":
+          description: Document type list
+    post:
+      tags: [Document Types]
+      summary: Create document type
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateDocumentType'
+      responses:
+        "201":
+          description: Document type created
+  /document-types/{id}:
+    get:
+      tags: [Document Types]
+      summary: Get document type by ID
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        "200":
+          description: Document type details
+  /settings:
+    get:
+      tags: [Settings]
+      summary: List public settings
+      responses:
+        "200":
+          description: Public settings
+    post:
+      tags: [Settings]
+      summary: Upsert setting
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SystemSetting'
+      responses:
+        "200":
+          description: Setting upserted
+        "201":
+          description: Setting created
+  /settings/all:
+    get:
+      tags: [Settings]
+      summary: List all settings
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: All settings
+  /settings/{key}:
+    get:
+      tags: [Settings]
+      summary: Get setting by key
+      parameters:
+        - $ref: '#/components/parameters/KeyParam'
+      responses:
+        "200":
+          description: Setting details
+    delete:
+      tags: [Settings]
+      summary: Delete setting by key
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/KeyParam'
+      responses:
+        "204":
+          description: Setting deleted
+  /health:
+    get:
+      tags: [Health]
+      summary: Health check
+      responses:
+        "200":
+          description: Healthy
+        "503":
+          description: Degraded

@@ -1,354 +1,195 @@
-# 🏗️ User Management Platform (UMP)
+# User Management Platform
 
-Enterprise-grade microservices user management platform with multi-database support, built with Node.js, TypeScript, Drizzle ORM, and Redis.
+UMP is a Node.js and TypeScript microservices stack with `auth-service`, `master-service`, and `document-service`. This branch is wired for `WSO2 API Manager` as the public API gateway and developer-facing control plane.
 
-## 📐 Architecture Overview
+## Architecture
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                         NGINX (Port 80)                         │
-│                       API Gateway / Proxy                       │
-└────────┬──────────────────┬──────────────────┬─────────────────┘
-         │                  │                  │
-         ▼                  ▼                  ▼
-┌─────────────────┐ ┌──────────────┐ ┌─────────────────────┐
-│  auth-service   │ │master-service│ │  document-service   │
-│    Port 3001    │ │  Port 3002   │ │     Port 3003       │
-│                 │ │              │ │                     │
-│ • Login         │ │ • Countries  │ │ • File Upload       │
-│ • Register      │ │ • States     │ │ • S3/Cloudinary     │
-│ • JWT Auth      │ │ • Cities     │ │ • Local Storage     │
-│ • Users CRUD    │ │ • Categories │ │ • Signed URLs       │
-│ • Roles         │ │ • Tags       │ │ • Bulk Upload       │
-│ • Departments   │ │ • Doc Types  │ │ • Metadata Mgmt     │
-│ • Designations  │ │ • Settings   │ │                     │
-└────────┬────────┘ └──────┬───────┘ └──────────┬──────────┘
-         │                 │                     │
-┌────────▼─────────────────▼─────────────────────▼────────────┐
-│                    Shared Infrastructure                      │
-├───────────────────┬──────────────────┬───────────────────────┤
-│   PostgreSQL:5432 │   MySQL:3306     │   MSSQL:1433          │
-│   MongoDB:27017   │   Redis:6379     │   Oracle (optional)   │
-└───────────────────┴──────────────────┴───────────────────────┘
+```text
+Client App
+  |
+  v
+WSO2 API Manager
+  - Publisher: https://localhost:9443/publisher
+  - Dev Portal: https://localhost:9443/devportal
+  - Gateway: https://localhost:8243
+  |
+  v
+UMP Services on Docker Network
+  - auth-service
+  - master-service
+  - document-service
+  |
+  v
+MySQL / MongoDB / Redis
 ```
 
-## 🗂️ Project Structure
+`auth-service` is the resource server. It validates WSO2-issued access tokens and resolves or auto-provisions the local UMP user profile used by the other services. `master-service` and `document-service` trust `auth-service /auth/me` for identity enrichment, so only one service needs direct WSO2 token logic.
 
-```
-user-mgmt-platform/
-├── docker-compose.yml              # Full stack orchestration
-├── .env                            # Root env variables
-├── README.md
-│
-├── shared/                         # Shared utilities (symlinked)
-│   └── src/
-│       ├── types/index.ts          # TypeScript interfaces
-│       ├── utils/
-│       │   ├── response.ts         # API response helpers
-│       │   ├── logger.ts           # Winston logger factory
-│       │   ├── jwt.ts              # JWT sign/verify utilities
-│       │   └── redis.ts            # Redis client + cache service
-│       ├── middleware/
-│       │   ├── auth.middleware.ts  # authenticate, authorize, scope
-│       │   └── security.middleware.ts  # helmet, cors, rate-limit
-│       └── database/
-│           └── manager.ts          # Multi-DB connection manager
-│
-├── auth-service/                   # Port 3001
-│   ├── Dockerfile
-│   ├── .env
-│   ├── package.json
-│   ├── tsconfig.json
-│   ├── drizzle.pg.config.ts
-│   ├── drizzle.mysql.config.ts
-│   └── src/
-│       ├── server.ts               # Entry point
-│       ├── app.ts                  # Express app setup
-│       ├── schemas/
-│       │   ├── pg.schema.ts        # Drizzle PostgreSQL schema
-│       │   ├── mysql.schema.ts     # Drizzle MySQL schema
-│       │   └── mongo.schema.ts     # MongoDB collections
-│       ├── database/
-│       │   ├── connection.ts       # Multi-DB connections
-│       │   └── logger.ts           # Service logger
-│       ├── repositories/
-│       │   ├── user.repository.ts  # User CRUD (all DBs)
-│       │   ├── session.repository.ts
-│       │   └── types.ts            # Repository types
-│       ├── services/
-│       │   ├── auth.service.ts     # Login, register, JWT
-│       │   └── user.service.ts     # User management business logic
-│       ├── controllers/
-│       │   ├── auth.controller.ts  # HTTP handlers for auth
-│       │   └── user.controller.ts  # HTTP handlers for users
-│       ├── routes/
-│       │   └── index.ts            # Route definitions + JSDoc
-│       ├── validators/
-│       │   └── auth.validator.ts   # express-validator rules
-│       └── swagger/
-│           └── swagger.config.ts   # OpenAPI spec
-│
-├── master-service/                 # Port 3002
-│   ├── Dockerfile
-│   ├── .env
-│   ├── package.json
-│   ├── tsconfig.json
-│   └── src/
-│       ├── server.ts
-│       ├── app.ts
-│       ├── schemas/
-│       │   └── pg.schema.ts        # Countries, states, cities, etc.
-│       ├── controllers/
-│       │   └── master.controller.ts
-│       ├── routes/
-│       │   └── index.ts
-│       └── swagger/
-│           └── swagger.config.ts
-│
-├── document-service/               # Port 3003
-│   ├── Dockerfile
-│   ├── .env
-│   ├── package.json
-│   ├── tsconfig.json
-│   └── src/
-│       ├── server.ts
-│       ├── app.ts
-│       ├── providers/
-│       │   └── storage.provider.ts # S3, Cloudinary, Local
-│       ├── database/
-│       │   └── mongo.schema.ts     # Document metadata in MongoDB
-│       ├── controllers/
-│       │   └── document.controller.ts
-│       ├── middleware/
-│       │   └── upload.middleware.ts # Multer + validation
-│       └── routes/
-│           └── index.ts
-│
-├── nginx/
-│   └── conf/
-│       ├── nginx.conf              # Main nginx config
-│       └── upstream.conf           # Service routing
-│
-└── scripts/
-    ├── init-postgres.sql           # PostgreSQL DDL + seed data
-    ├── init-mysql.sql              # MySQL DDL + seed data
-    └── init-mongo.js               # MongoDB collections + indexes
+## What Changed For APIM Mode
+
+- `docker-compose.yml` now includes a `wso2-apim` container with Publisher, Dev Portal, and Gateway ports.
+- Root `.env` and `.env.example` now define APIM and WSO2 settings.
+- Service env files now default to `AUTH_PROVIDER=wso2`.
+- `document-service/.env` now uses `AUTH_SERVICE_URL=http://auth-service:6001/api/v1` to match the middleware contract.
+- Services already run with `trust proxy`, so they can sit behind APIM or NGINX without breaking forwarded request metadata.
+
+## Required URLs
+
+After `docker compose up -d`, use:
+
+- Publisher: `https://localhost:9443/publisher`
+- Dev Portal: `https://localhost:9443/devportal`
+- Gateway HTTPS: `https://localhost:8243`
+- Gateway HTTP: `http://localhost:8280`
+
+Internal service URLs remain:
+
+- Auth API: `http://localhost:6001/api/v1`
+- Master API: `http://localhost:6002/api/v1`
+- Document API: `http://localhost:6003/api/v1`
+
+Those direct ports are useful for debugging. For consumer traffic, use APIM Gateway URLs.
+
+## Environment
+
+Root `.env` now carries the APIM-facing settings:
+
+```env
+AUTH_PROVIDER=wso2
+APIM_IMAGE=wso2/wso2am:4.4.0
+APIM_PUBLISHER_URL=https://localhost:9443/publisher
+APIM_DEVPORTAL_URL=https://localhost:9443/devportal
+APIM_GATEWAY_URL=https://localhost:8243
+WSO2_ISSUER=https://wso2-apim:9443/oauth2/token
+WSO2_JWKS_URI=https://wso2-apim:9443/oauth2/jwks
+WSO2_AUDIENCE=ump-client
+WSO2_AUTO_PROVISION_USERS=true
 ```
 
-## 🚀 Quick Start
+You still need valid local master data IDs for first-time user provisioning:
 
-### Prerequisites
-- Docker & Docker Compose v2.x
-- Node.js 20+ (for local development)
-
-### 1. Start all services
-```bash
-# Clone & setup
-cp .env.example .env    # edit credentials
-
-# Start all services
-docker-compose up -d
-
-# View logs
-docker-compose logs -f auth-service
-
-# Check service health
-curl http://localhost/health
-curl http://localhost:3001/health
-curl http://localhost:3002/health
-curl http://localhost:3003/health
+```env
+WSO2_DEFAULT_ROLE_ID=550e8400-e29b-41d4-a716-446655440003
+WSO2_DEFAULT_DEPARTMENT_ID=660e8400-e29b-41d4-a716-446655440005
+WSO2_DEFAULT_DESIGNATION_ID=770e8400-e29b-41d4-a716-446655440006
 ```
 
-### 2. API Documentation
-| Service | Swagger URL |
-|---------|-------------|
-| Auth & Users | http://localhost:3001/api/docs |
-| Master Data | http://localhost:3002/api/docs |
-| Documents | http://localhost:3003/api/docs |
-| Via Gateway | http://localhost/docs/auth |
+## Start The Stack
 
-### 3. Default Admin Credentials
-```
-Email:    admin@ump-platform.com
-Password: Admin@1234
-```
-
-## 🔐 Authentication Flow
-
-```
-1. POST /api/auth/login         → Access Token (15min) + Refresh Token (7d, httpOnly cookie)
-2. Authorization: Bearer <token> → Protected endpoints
-3. POST /api/auth/refresh       → New Access + Refresh Token (rotation)
-4. POST /api/auth/logout        → Blacklist + revoke
-```
-
-## 🔄 Database Switching
-
-Pass the `X-DB-Type` header to switch databases **per request**:
+1. Copy the root env file.
 
 ```bash
-# Use PostgreSQL (default)
-curl -H "Authorization: Bearer $TOKEN" http://localhost:3001/api/users
-
-# Use MySQL
-curl -H "Authorization: Bearer $TOKEN" -H "X-DB-Type: mysql" http://localhost:3001/api/users
-
-# Use MongoDB
-curl -H "Authorization: Bearer $TOKEN" -H "X-DB-Type: mongodb" http://localhost:3001/api/users
+cp .env.example .env
 ```
 
-## 👥 Role-Based Access Control
+2. Review the APIM and WSO2 values in `.env`.
 
-| Action | Admin | Lead | User |
-|--------|-------|------|------|
-| View all users | ✅ | ❌ | ❌ |
-| View dept users | ✅ | ✅ | ❌ |
-| View own profile | ✅ | ✅ | ✅ |
-| Create user | ✅ | ❌ | ❌ |
-| Edit user | ✅ | Own dept | Own profile |
-| Delete user | ✅ | ❌ | ❌ |
-| Change status | ✅ | ✅ | ❌ |
-| Dashboard stats | All | Dept-level | Own |
-
-## 📤 Document Upload
+3. Start the containers.
 
 ```bash
-# Single upload
-curl -X POST http://localhost:3003/api/documents/upload \
-  -H "Authorization: Bearer $TOKEN" \
-  -F "file=@document.pdf" \
-  -F "folder=contracts" \
-  -F "entityType=user" \
-  -F "entityId=USER_UUID"
-
-# Upload to S3
-curl -X POST http://localhost:3003/api/documents/upload?provider=s3 \
-  -H "Authorization: Bearer $TOKEN" \
-  -F "file=@photo.jpg"
-
-# Bulk upload
-curl -X POST http://localhost:3003/api/documents/upload-bulk \
-  -H "Authorization: Bearer $TOKEN" \
-  -F "files=@file1.pdf" \
-  -F "files=@file2.pdf"
+docker compose up -d
 ```
 
-## 🔒 Security Features
+4. Check the main endpoints.
 
-- ✅ JWT Access + Refresh tokens with rotation
-- ✅ httpOnly cookie for refresh token
-- ✅ Token blacklisting in Redis
-- ✅ Account lockout after failed attempts
-- ✅ bcrypt password hashing (12 rounds)
-- ✅ Helmet.js security headers
-- ✅ CORS with whitelist
-- ✅ Rate limiting (global + per-endpoint)
-- ✅ SQL injection guard
-- ✅ Input validation (express-validator)
-- ✅ Role-based access control
-- ✅ Department-scope filtering
-- ✅ File type & size validation
-- ✅ Non-root Docker containers
-- ✅ XSS protection headers
-
-## 🧪 Environment Variables Reference
-
-### auth-service
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `DEFAULT_DB_TYPE` | Primary DB to use | `postgres` |
-| `JWT_ACCESS_EXPIRES` | Access token TTL | `15m` |
-| `JWT_REFRESH_EXPIRES` | Refresh token TTL | `7d` |
-| `BCRYPT_ROUNDS` | Password hash rounds | `12` |
-| `MAX_LOGIN_ATTEMPTS` | Lockout threshold | `5` |
-| `LOCK_DURATION_MINUTES` | Lockout duration | `30` |
-
-### document-service
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `STORAGE_PROVIDER` | `s3`, `cloudinary`, `local` | `local` |
-| `MAX_FILE_SIZE_MB` | Upload size limit | `50` |
-| `ALLOWED_MIME_TYPES` | Comma-separated allowed types | see .env |
-
-## 📡 API Endpoints Summary
-
-### Auth Service (`:3001`)
-| Method | Path | Auth | Role |
-|--------|------|------|------|
-| POST | `/api/auth/register` | Public | - |
-| POST | `/api/auth/login` | Public | - |
-| POST | `/api/auth/refresh` | Public | - |
-| POST | `/api/auth/logout` | JWT | Any |
-| POST | `/api/auth/logout-all` | JWT | Any |
-| GET | `/api/auth/me` | JWT | Any |
-| POST | `/api/auth/change-password` | JWT | Any |
-| GET | `/api/users` | JWT | All |
-| POST | `/api/users` | JWT | Admin |
-| GET | `/api/users/dashboard` | JWT | All |
-| GET | `/api/users/:id` | JWT | Scoped |
-| PUT | `/api/users/:id` | JWT | Admin/Self |
-| DELETE | `/api/users/:id` | JWT | Admin |
-| PATCH | `/api/users/:id/status` | JWT | Admin/Lead |
-
-### Master Service (`:3002`)
-| Method | Path | Auth |
-|--------|------|------|
-| GET | `/api/master/countries` | Public |
-| GET | `/api/master/states?countryId=` | Public |
-| GET | `/api/master/cities?stateId=` | Public |
-| GET/POST | `/api/master/categories` | Public/Admin |
-| GET/POST | `/api/master/tags` | Public/Admin |
-| GET/POST | `/api/master/document-types` | Public/Admin |
-| GET | `/api/master/settings` | Public |
-| POST | `/api/master/settings` | Admin |
-
-### Document Service (`:3003`)
-| Method | Path | Auth |
-|--------|------|------|
-| POST | `/api/documents/upload` | JWT |
-| POST | `/api/documents/upload-bulk` | JWT |
-| GET | `/api/documents` | JWT |
-| GET | `/api/documents/:id` | JWT |
-| GET | `/api/documents/:id/download` | JWT |
-| PATCH | `/api/documents/:id/status` | Admin/Lead |
-| DELETE | `/api/documents/:id` | JWT |
-
-
-## SQL Generate
-`npx drizzle-kit generate --config=drizzle.pg.config.ts`
-`npx drizzle-kit generate --config=drizzle.mysql.config.ts`
-This creates SQL file inside:src/database/migrations/pg
-
-## Apply Migration - For production-safe workflow:
-`npx drizzle-kit migrate --config=drizzle.pg.config.ts`
-
-## Alternative (Dev Only Fast Way)
-If you are in development and don't care about migration files:
-`npx drizzle-kit push --config=drizzle.pg.config.ts`
-`npx drizzle-kit push --config=drizzle.mysql.config.ts`
-
-## DB Push
-`npx drizzle-kit push --config=drizzle.pg.config.ts`
-
-## Create .env.local file 
-```
-set -a
-source .env.local
-npx drizzle-kit push --config=drizzle.pg.config.ts
-```
-## MySQL document DB Create 
-```
-docker exec -it ump_mysql mysql -uroot -proot_pass_2024 -e "CREATE DATABASE IF NOT EXISTS ump_documents; GRANT ALL PRIVILEGES ON ump_documents.* TO 'ump_user'@'%'; GRANT ALL PRIVILEGES ON ump_documents.* TO 'ump_user'@'localhost'; FLUSH PRIVILEGES;"
+```bash
+docker compose ps
+curl http://localhost:6001/health
+curl http://localhost:6002/health
+curl http://localhost:6003/health
 ```
 
-## MS SQL Migration
+Note: the stock `wso2/wso2am:4.4.0` image is enough for local wiring, but production deployments should use WSO2's maintained deployment guidance rather than this single-container setup.
 
-``` BASH
-MSYS_NO_PATHCONV=1 docker exec -i ump_mssql /opt/mssql-tools18/bin/sqlcmd -S localhost,1433 -U sa -P "Ump_Pass@2024" -C -i /scripts/init-mssql.sql
+## WSO2 API Publishing Flow
+
+1. Open Publisher at `https://localhost:9443/publisher`.
+2. Create or import an API for each public UMP surface you want to expose.
+3. Point the backend endpoints at the internal service URLs on the Docker network.
+4. Configure OAuth2 security in APIM for the APIs.
+5. Publish the APIs so they are visible in the Dev Portal.
+
+Suggested backend targets inside Docker:
+
+- `http://auth-service:6001/api/v1`
+- `http://master-service:6002/api/v1`
+- `http://document-service:6003/api/v1`
+
+Suggested public APIs in APIM:
+
+- `ump-auth` -> `/identity`
+- `ump-master` -> `/master`
+- `ump-documents` -> `/documents`
+
+## Subscription And Application Flow
+
+1. Open Dev Portal at `https://localhost:9443/devportal`.
+2. Create an application for the consuming frontend or client.
+3. Subscribe that application to the published UMP APIs.
+4. Generate keys or tokens from the application.
+5. Call the APIM Gateway URL with the issued token.
+
+Example gateway calls:
+
+```bash
+curl https://localhost:8243/identity/auth/me \
+  -H "Authorization: Bearer <access-token>"
+
+curl https://localhost:8243/master/countries \
+  -H "Authorization: Bearer <access-token>"
+
+curl https://localhost:8243/documents \
+  -H "Authorization: Bearer <access-token>"
 ```
 
-``` POWERSHELL
-npm.cmd --workspace auth-service run migrate:mssql
-npm.cmd --workspace master-service run migrate:mssql
-npm.cmd --workspace document-service run migrate:mssql
+If your APIM API context includes `/api/v1`, reflect that in the gateway URL you publish. Keep the backend and published context aligned. The services only require a bearer token; they do not require APIM-specific custom headers.
+
+## Auth Behavior In APIM Mode
+
+When `AUTH_PROVIDER=wso2`:
+
+- `auth-service` validates the bearer token against WSO2 JWKS.
+- `auth-service` resolves the local UMP user or auto-provisions one.
+- `master-service` and `document-service` call `auth-service /auth/me` internally.
+- Local `register`, `login`, and `refresh` flows are disabled.
+- Local authorization still uses UMP role, department, and designation data.
+
+This keeps authentication external and central while preserving UMP's authorization model.
+
+## Throttling, Policies, And Monetization
+
+These concerns are expected to live in WSO2 APIM, not in the Node services:
+
+- API lifecycle and versioning: Publisher
+- Application and subscription management: Dev Portal
+- Rate limits and quotas: APIM throttling policies
+- Gateway mediation and policy enforcement: APIM gateway
+- Monetization: APIM product configuration
+
+The Node services should remain thin backend implementations. Avoid duplicating APIM policies inside Express unless the policy is service-internal and independent of gateway behavior.
+
+## Local Service Commands
+
+Use workspace-root commands:
+
+```bash
+npm install
+npm run build --workspace=auth-service
+npm run build --workspace=master-service
+npm run build --workspace=document-service
 ```
+
+MySQL migration examples:
+
+```bash
+npm run migrate:mysql --workspace=master-service
+npm run migrate:mysql --workspace=document-service
+```
+
+If you run migrations from the host shell instead of inside containers, use host-resolvable DB values such as `MYSQL_HOST=localhost` and `MYSQL_PORT=3305`.
+
+## Notes
+
+- `nginx` is still present for internal routing or legacy local access, but APIM should be treated as the public gateway in this branch.
+- If APIM forwards the original bearer token, the current middleware path is sufficient.
+- If you later decide to use APIM-generated backend JWTs or custom mediation policies, that is a separate integration step and should be designed explicitly rather than inferred.

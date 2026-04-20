@@ -1,10 +1,11 @@
 import { Router } from 'express';
-import { asyncHandler, authenticate, authorize } from '@prasad-rtns/shared';
+import { asyncHandler } from '@prasad-rtns/shared';
 import {
   RoleController,
   DepartmentController,
   DesignationController,
 } from '../../modules/master/master.controller';
+import { authenticate, authorize } from '../../middleware/auth.middleware';
 
 const router = Router();
 

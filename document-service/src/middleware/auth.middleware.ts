@@ -1,10 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import axios, { AxiosError } from 'axios';
 import { JwtPayload, ResponseUtil } from '@prasad-rtns/shared';
-import logger from '../database/logger';
-import dotenv from 'dotenv';
-
-dotenv.config();
 
 const AUTH_SERVICE_URL = process.env.AUTH_SERVICE_URL || 'http://auth-service:6001/api/v1';
 
@@ -48,7 +44,6 @@ export const authenticate = async (
     const apiError = error as AxiosError<any>;
     const status = apiError.response?.status ?? 503;
     const message = apiError.response?.data?.message || apiError.message || 'Unable to validate user';
-    logger.error(`Authentication failed: ${message}`);
     ResponseUtil.error(res, message, status);
   }
 };
@@ -66,5 +61,3 @@ export const authorize = (...roles: JwtPayload['role'][]) => {
     next();
   };
 };
-
-export const userAuthenticate = authenticate;
