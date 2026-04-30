@@ -5,6 +5,7 @@ import compression from 'compression';
 import morgan from 'morgan';
 import swaggerUi from 'swagger-ui-express';
 import coredataRoutes from './modules/coredata/coredata.routes';
+import metaRoutes from './modules/meta/meta.routes';
 //import { swaggerSpec } from './docs/swagger.config';
 import fs from 'fs';
 import path from 'path';
@@ -56,6 +57,7 @@ app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
 // ─── Routes ────────────────────────────────────────────────────────────────────
 app.use('/api/v1/master', coredataRoutes);
+app.use('/api/v1/meta', metaRoutes);
 
 // ─── Metrics endpoint for Prometheus
 app.use(metricsMiddleware);

@@ -3,6 +3,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 export type UserStatus    = 'active' | 'inactive' | 'suspended';
 export type UserRoleSlug  = 'admin' | 'lead' | 'user';
+export type UserCategory  = 'external' | 'internal' | 'admin';
 import type { IRole, IDepartment, IDesignation } 
   from '../master/master.types';
 
@@ -18,6 +19,7 @@ export interface IUser {
   roleId: string;
   departmentId: string;
   designationId: string;
+  userCategory: UserCategory;
   status: 'active' | 'inactive' | 'suspended';
   isEmailVerified: boolean;
   emailVerificationToken?: string | null;
@@ -53,6 +55,7 @@ export interface CreateUserDTO {
   roleId: string;
   departmentId: string;
   designationId: string;
+  userCategory?: UserCategory;
   createdBy?: string;
 }
 
@@ -91,6 +94,7 @@ export interface UserFilter {
   status?: UserStatus;
   departmentId?: string;
   roleId?: string;
+  userCategory?: UserCategory;
   // scope injected by middleware
   departmentFilter?: string;
   userFilter?: string;

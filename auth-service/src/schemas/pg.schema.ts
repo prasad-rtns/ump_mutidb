@@ -6,14 +6,15 @@ import { relations } from 'drizzle-orm';
 // ─── Enums ────────────────────────────────────────────────────────────────────
 export const userStatusEnum = pgEnum('user_status', ['active', 'inactive', 'suspended']);
 export const userRoleEnum = pgEnum('user_role_slug', ['admin', 'lead', 'user']);
+export const userCategoryEnum = pgEnum('user_category', ['external', 'internal', 'admin']);
 
 // ─── Roles table ──────────────────────────────────────────────────────────────
 export const roles = pgTable('roles', {
   id: uuid('id').primaryKey().defaultRandom(),
   name: varchar('name', { length: 100 }).notNull(),
-  slug: userRoleEnum('slug').notNull().unique(),
+  slug: varchar('slug', { length: 100 }).notNull().unique(),
   description: text('description'),
-  permissions: jsonb('permissions').$type<string[]>().default([]),
+  permissions: jsonb('permissions').$type<Record<string, string[]>>().default({}),
   isActive: boolean('is_active').default(true).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
@@ -67,6 +68,7 @@ export const users = pgTable('users', {
   roleId: uuid('role_id').notNull().references(() => roles.id),
   departmentId: uuid('department_id').notNull().references(() => departments.id),
   designationId: uuid('designation_id').notNull().references(() => designations.id),
+  userCategory: userCategoryEnum('user_category').default('internal').notNull(),
   status: userStatusEnum('status').default('active').notNull(),
   isEmailVerified: boolean('is_email_verified').default(false).notNull(),
   emailVerificationToken: text('email_verification_token'),

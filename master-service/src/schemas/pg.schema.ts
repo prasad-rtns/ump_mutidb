@@ -110,6 +110,19 @@ export const notificationTemplates = pgTable('notification_templates', {
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 }, (t) => ({ codeIdx: uniqueIndex('notif_tmpl_code_idx').on(t.code) }));
 
+// ─── Service Types ────────────────────────────────────────────────────────────
+export const serviceTypes = pgTable('service_types', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  name: varchar('name', { length: 200 }).notNull(),
+  code: varchar('code', { length: 50 }).notNull().unique(),
+  description: text('description'),
+  routeLink: varchar('route_link', { length: 500 }),
+  icon: varchar('icon', { length: 100 }),
+  isActive: boolean('is_active').default(true).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (t) => ({ codeIdx: uniqueIndex('service_types_code_idx').on(t.code) }));
+
 // ─── Relations ────────────────────────────────────────────────────────────────
 export const countriesRelations = relations(countries, ({ many }) => ({
   states: many(states),
@@ -131,5 +144,5 @@ export const categoriesRelations = relations(categories, ({ one, many }) => ({
 
 export const masterSchema = {
   countries, states, cities, categories, tags,
-  documentTypes, systemSettings, notificationTemplates,
+  documentTypes, systemSettings, notificationTemplates, serviceTypes,
 };

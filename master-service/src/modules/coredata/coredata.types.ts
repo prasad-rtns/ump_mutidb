@@ -20,4 +20,9 @@ export interface UpsertSettingDTO  { key: string; value?: string; type?: string;
 export type UpdateCountryDTO  = Partial<CreateCountryDTO>  & { isActive?: boolean };
 export type UpdateCategoryDTO = Partial<CreateCategoryDTO> & { isActive?: boolean };
 
+export interface ServiceType  { id: string; name: string; code: string; description: string | null; routeLink: string | null; icon: string | null; isActive: boolean; createdAt: Date; updatedAt: Date; }
+
+export interface CreateServiceTypeDTO { name: string; code: string; description?: string; routeLink?: string; icon?: string; }
+export type UpdateServiceTypeDTO = Partial<CreateServiceTypeDTO> & { isActive?: boolean };
+
 export interface EntityFilter { search?: string; isActive?: boolean; [key: string]: unknown; }

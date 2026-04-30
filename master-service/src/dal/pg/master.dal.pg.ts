@@ -1,9 +1,9 @@
 import { eq, ilike, and } from 'drizzle-orm';
 import { v4 as uuidv4 } from 'uuid';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
-import { countries, states, cities, categories, tags, documentTypes, systemSettings } from '../../schemas/pg.schema';
-import { ICountryDAL, IStateDAL, ICityDAL, ICategoryDAL, ITagDAL, IDocumentTypeDAL, ISettingDAL } from '../interfaces/master.dal.interfaces';
-import type { Country, State, City, Category, Tag, DocumentType, SystemSetting, CreateCountryDTO, CreateStateDTO, CreateCityDTO, CreateCategoryDTO, CreateTagDTO, CreateDocumentTypeDTO, UpsertSettingDTO, UpdateCountryDTO, UpdateCategoryDTO } from '../../modules/coredata/coredata.types';
+import { countries, states, cities, categories, tags, documentTypes, systemSettings, serviceTypes } from '../../schemas/pg.schema';
+import { ICountryDAL, IStateDAL, ICityDAL, ICategoryDAL, ITagDAL, IDocumentTypeDAL, ISettingDAL, IServiceTypeDAL } from '../interfaces/master.dal.interfaces';
+import type { Country, State, City, Category, Tag, DocumentType, SystemSetting, ServiceType, CreateCountryDTO, CreateStateDTO, CreateCityDTO, CreateCategoryDTO, CreateTagDTO, CreateDocumentTypeDTO, UpsertSettingDTO, UpdateCountryDTO, UpdateCategoryDTO, CreateServiceTypeDTO, UpdateServiceTypeDTO } from '../../modules/coredata/coredata.types';
 
 type PgDB = NodePgDatabase<Record<string, never>>;
 const now = () => new Date();
@@ -92,4 +92,15 @@ export class PgSettingDAL implements ISettingDAL {
     return r[0] as SystemSetting;
   }
   async delete(key: string) { const r = await this.db.delete(systemSettings).where(eq(systemSettings.key, key)).returning({ id: systemSettings.id }); return r.length > 0; }
+}
+
+// ─── Service Type DAL ─────────────────────────────────────────────────────────
+export class PgServiceTypeDAL implements IServiceTypeDAL {
+  constructor(private db: PgDB) {}
+  async findAll(activeOnly = true)    { return this.db.select().from(serviceTypes).where(activeOnly ? eq(serviceTypes.isActive, true) : undefined) as Promise<ServiceType[]>; }
+  async findById(id: string)          { const r = await this.db.select().from(serviceTypes).where(eq(serviceTypes.id, id)).limit(1); return (r[0] as ServiceType) ?? null; }
+  async findByCode(code: string)      { const r = await this.db.select().from(serviceTypes).where(eq(serviceTypes.code, code)).limit(1); return (r[0] as ServiceType) ?? null; }
+  async create(data: CreateServiceTypeDTO) { const r = await this.db.insert(serviceTypes).values({ id: uuidv4(), name: data.name, code: data.code, description: data.description ?? null, routeLink: data.routeLink ?? null, icon: data.icon ?? null, isActive: true, createdAt: now(), updatedAt: now() }).returning(); return r[0] as ServiceType; }
+  async update(id: string, data: UpdateServiceTypeDTO) { const r = await this.db.update(serviceTypes).set({ ...(data as any), updatedAt: now() }).where(eq(serviceTypes.id, id)).returning(); return (r[0] as ServiceType) ?? null; }
+  async delete(id: string) { const r = await this.db.update(serviceTypes).set({ isActive: false, updatedAt: now() }).where(eq(serviceTypes.id, id)).returning({ id: serviceTypes.id }); return r.length > 0; }
 }

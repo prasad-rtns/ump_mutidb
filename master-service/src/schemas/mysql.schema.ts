@@ -125,6 +125,20 @@ export const notificationTemplates = mysqlTable('notification_templates', {
   codeIdx: uniqueIndex('notif_tmpl_code_idx').on(table.code),
 }));
 
+export const serviceTypes = mysqlTable('service_types', {
+  id: varchar('id', { length: 36 }).primaryKey(),
+  name: varchar('name', { length: 200 }).notNull(),
+  code: varchar('code', { length: 50 }).notNull(),
+  description: text('description'),
+  routeLink: varchar('route_link', { length: 500 }),
+  icon: varchar('icon', { length: 100 }),
+  isActive: boolean('is_active').default(true).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => ({
+  codeIdx: uniqueIndex('service_types_code_idx').on(table.code),
+}));
+
 export const mysqlSchema = {
   countries,
   states,
@@ -134,4 +148,5 @@ export const mysqlSchema = {
   documentTypes,
   systemSettings,
   notificationTemplates,
+  serviceTypes,
 };

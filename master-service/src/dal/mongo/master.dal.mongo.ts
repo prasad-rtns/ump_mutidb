@@ -8,7 +8,8 @@ import type {
   ICategoryDAL,
   ITagDAL,
   IDocumentTypeDAL,
-  ISettingDAL
+  ISettingDAL,
+  IServiceTypeDAL
 } from '../interfaces/master.dal.interfaces';
 
 import type {
@@ -19,6 +20,7 @@ import type {
   Tag,
   DocumentType,
   SystemSetting,
+  ServiceType,
   CreateCountryDTO,
   UpdateCountryDTO,
   CreateStateDTO,
@@ -27,7 +29,9 @@ import type {
   UpdateCategoryDTO,
   CreateTagDTO,
   CreateDocumentTypeDTO,
-  UpsertSettingDTO
+  UpsertSettingDTO,
+  CreateServiceTypeDTO,
+  UpdateServiceTypeDTO
 } from '../../modules/coredata/coredata.types';
 
 const now = () => new Date();
@@ -463,5 +467,34 @@ export class MongoSettingDAL implements ISettingDAL {
   async delete(key: string): Promise<boolean> {
     const r = await this.col().deleteOne({ key });
     return r.deletedCount === 1;
+  }
+}
+
+/* ───────────────── ServiceType ───────────────── */
+export class MongoServiceTypeDAL implements IServiceTypeDAL {
+  constructor(private db: Db) {}
+  private col(): Collection<ServiceType> { return this.db.collection<ServiceType>('service_types'); }
+
+  async findAll(activeOnly = true): Promise<ServiceType[]> {
+    return this.col().find(activeOnly ? { isActive: true } : {}).toArray() as Promise<ServiceType[]>;
+  }
+  async findById(id: string): Promise<ServiceType | null> {
+    return this.col().findOne({ id }) as Promise<ServiceType | null>;
+  }
+  async findByCode(code: string): Promise<ServiceType | null> {
+    return this.col().findOne({ code }) as Promise<ServiceType | null>;
+  }
+  async create(data: CreateServiceTypeDTO): Promise<ServiceType> {
+    const doc: ServiceType = { id: randomUUID(), name: data.name, code: data.code, description: data.description ?? null, routeLink: data.routeLink ?? null, icon: data.icon ?? null, isActive: true, createdAt: now(), updatedAt: now() };
+    await this.col().insertOne(doc as any);
+    return doc;
+  }
+  async update(id: string, data: UpdateServiceTypeDTO): Promise<ServiceType | null> {
+    const r = await this.col().findOneAndUpdate({ id }, { $set: { ...data, updatedAt: now() } }, { returnDocument: 'after' });
+    return r ?? null;
+  }
+  async delete(id: string): Promise<boolean> {
+    const r = await this.col().updateOne({ id }, { $set: { isActive: false, updatedAt: now() } });
+    return r.modifiedCount > 0;
   }
 }

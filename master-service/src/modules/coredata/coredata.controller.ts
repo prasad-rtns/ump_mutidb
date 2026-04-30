@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { CountryService, StateService, CityService, CategoryService, TagService, DocumentTypeService, SettingsService } from './coredata.service';
+import { CountryService, StateService, CityService, CategoryService, TagService, DocumentTypeService, SettingsService, ServiceTypeService } from './coredata.service';
 import { ResponseUtil } from '@prasad-rtns/shared';
 import { DatabaseType } from '@prasad-rtns/shared';
 
@@ -63,4 +63,12 @@ export const SettingsController = {
   async listAll(req: Request, res: Response) { return ResponseUtil.success(res, await (await SettingsService.create(db(req))).getAllSettings()); },
   async upsert(req: Request, res: Response) { return ResponseUtil.success(res, await (await SettingsService.create(db(req))).upsert(req.body)); },
   async remove(req: Request, res: Response) { return ResponseUtil.success(res, await (await SettingsService.create(db(req))).delete(req.params.key)); },
+};
+
+export const ServiceTypeController = {
+  async list(req: Request, res: Response)   { return ResponseUtil.success(res, await (await ServiceTypeService.create(db(req))).listAll()); },
+  async getById(req: Request, res: Response) { return ResponseUtil.success(res, await (await ServiceTypeService.create(db(req))).getById(req.params.id)); },
+  async create(req: Request, res: Response) { return ResponseUtil.created(res, await (await ServiceTypeService.create(db(req))).create(req.body)); },
+  async update(req: Request, res: Response) { return ResponseUtil.success(res, await (await ServiceTypeService.create(db(req))).update(req.params.id, req.body)); },
+  async remove(req: Request, res: Response) { return ResponseUtil.success(res, await (await ServiceTypeService.create(db(req))).delete(req.params.id)); },
 };

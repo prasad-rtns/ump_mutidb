@@ -1,6 +1,6 @@
 import { MasterDALFactory, MasterDALBundle } from '../../dal/dal.factory';
 import { CacheService, DatabaseType } from '@prasad-rtns/shared';
-import type { CreateCountryDTO, UpdateCountryDTO, CreateStateDTO, CreateCityDTO, CreateCategoryDTO, UpdateCategoryDTO, CreateTagDTO, CreateDocumentTypeDTO, UpsertSettingDTO } from './coredata.types';
+import type { CreateCountryDTO, UpdateCountryDTO, CreateStateDTO, CreateCityDTO, CreateCategoryDTO, UpdateCategoryDTO, CreateTagDTO, CreateDocumentTypeDTO, UpsertSettingDTO, CreateServiceTypeDTO, UpdateServiceTypeDTO } from './coredata.types';
 import logger from '../../database/logger';
 
 const cache = new CacheService('master');
@@ -261,5 +261,50 @@ export class SettingsService {
     if (!ok) throw new Error(`Setting '${key}' not found`);
     await cache.del('settings:public');
     return { message: 'Setting deleted' };
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  ServiceTypeService
+// ─────────────────────────────────────────────────────────────────────────────
+export class ServiceTypeService {
+  private constructor(private readonly dal: MasterDALBundle) {}
+  static async create(dbType: DatabaseType) { return new ServiceTypeService(await getDal(dbType)); }
+
+  async listAll() {
+    const cached = await cache.get<unknown[]>('service_types:all');
+    if (cached) return cached;
+    const data = await this.dal.serviceType.findAll(true);
+    await cache.set('service_types:all', data, 3600);
+    return data;
+  }
+
+  async getById(id: string) {
+    const s = await this.dal.serviceType.findById(id);
+    if (!s) throw new Error('Service type not found');
+    return s;
+  }
+
+  async create(data: CreateServiceTypeDTO) {
+    const existing = await this.dal.serviceType.findByCode(data.code);
+    if (existing) throw new Error(`Service type code '${data.code}' already exists`);
+    const result = await this.dal.serviceType.create(data);
+    await cache.del('service_types:all');
+    logger.info('ServiceType created', { id: result.id });
+    return result;
+  }
+
+  async update(id: string, data: UpdateServiceTypeDTO) {
+    const result = await this.dal.serviceType.update(id, data);
+    if (!result) throw new Error('Service type not found');
+    await cache.del('service_types:all');
+    return result;
+  }
+
+  async delete(id: string) {
+    const ok = await this.dal.serviceType.delete(id);
+    if (!ok) throw new Error('Service type not found');
+    await cache.del('service_types:all');
+    return { message: 'Service type deactivated' };
   }
 }

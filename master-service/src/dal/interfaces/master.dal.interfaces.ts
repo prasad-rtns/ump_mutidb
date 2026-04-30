@@ -1,4 +1,4 @@
-import { Country, State, City, Category, Tag, DocumentType, SystemSetting, CreateCountryDTO, CreateStateDTO, CreateCityDTO, CreateCategoryDTO, CreateTagDTO, CreateDocumentTypeDTO, UpsertSettingDTO, UpdateCountryDTO, UpdateCategoryDTO } from '../../modules/coredata/coredata.types';
+import { Country, State, City, Category, Tag, DocumentType, SystemSetting, ServiceType, CreateCountryDTO, CreateStateDTO, CreateCityDTO, CreateCategoryDTO, CreateTagDTO, CreateDocumentTypeDTO, UpsertSettingDTO, UpdateCountryDTO, UpdateCategoryDTO, CreateServiceTypeDTO, UpdateServiceTypeDTO } from '../../modules/coredata/coredata.types';
 
 export interface ICountryDAL {
   findAll(activeOnly?: boolean): Promise<Country[]>;
@@ -49,6 +49,15 @@ export interface IDocumentTypeDAL {
   findById(id: string): Promise<DocumentType | null>;
   findByCode(code: string): Promise<DocumentType | null>;
   create(data: CreateDocumentTypeDTO): Promise<DocumentType>;
+  delete(id: string): Promise<boolean>;
+}
+
+export interface IServiceTypeDAL {
+  findAll(activeOnly?: boolean): Promise<ServiceType[]>;
+  findById(id: string): Promise<ServiceType | null>;
+  findByCode(code: string): Promise<ServiceType | null>;
+  create(data: CreateServiceTypeDTO): Promise<ServiceType>;
+  update(id: string, data: UpdateServiceTypeDTO): Promise<ServiceType | null>;
   delete(id: string): Promise<boolean>;
 }
 

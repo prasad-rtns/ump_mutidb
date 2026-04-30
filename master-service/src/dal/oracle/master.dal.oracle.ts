@@ -8,7 +8,8 @@ import type {
   ICategoryDAL,
   ITagDAL,
   IDocumentTypeDAL,
-  ISettingDAL
+  ISettingDAL,
+  IServiceTypeDAL
 } from '../interfaces/master.dal.interfaces';
 
 import type {
@@ -19,6 +20,7 @@ import type {
   Tag,
   DocumentType,
   SystemSetting,
+  ServiceType,
   CreateCountryDTO,
   UpdateCountryDTO,
   CreateStateDTO,
@@ -27,7 +29,9 @@ import type {
   UpdateCategoryDTO,
   CreateTagDTO,
   CreateDocumentTypeDTO,
-  UpsertSettingDTO
+  UpsertSettingDTO,
+  CreateServiceTypeDTO,
+  UpdateServiceTypeDTO
 } from '../../modules/coredata/coredata.types';
 
 const now = () => new Date();
@@ -585,6 +589,53 @@ export class OracleSettingDAL implements ISettingDAL {
       `DELETE FROM system_settings WHERE key = :key`,
       { key }
     );
+    return true;
+  }
+}
+
+// ─── Service Type DAL ─────────────────────────────────────────────────────────
+export class OracleServiceTypeDAL implements IServiceTypeDAL {
+  constructor(private pool: Pool) {}
+
+  async findAll(activeOnly = true): Promise<ServiceType[]> {
+    const q = activeOnly
+      ? `SELECT * FROM service_types WHERE is_active = 1`
+      : `SELECT * FROM service_types`;
+    return execute<ServiceType>(this.pool, q, {});
+  }
+
+  async findById(id: string): Promise<ServiceType | null> {
+    const r = await execute<ServiceType>(this.pool, `SELECT * FROM service_types WHERE id = :id`, { id });
+    return r[0] ?? null;
+  }
+
+  async findByCode(code: string): Promise<ServiceType | null> {
+    const r = await execute<ServiceType>(this.pool, `SELECT * FROM service_types WHERE code = :code`, { code });
+    return r[0] ?? null;
+  }
+
+  async create(data: CreateServiceTypeDTO): Promise<ServiceType> {
+    const id = randomUUID();
+    await execute(this.pool, `INSERT INTO service_types (id,name,code,description,route_link,icon,is_active,created_at,updated_at) VALUES (:id,:name,:code,:description,:routeLink,:icon,1,SYSDATE,SYSDATE)`,
+      { id, name: data.name, code: data.code, description: data.description ?? null, routeLink: data.routeLink ?? null, icon: data.icon ?? null });
+    return (await this.findById(id))!;
+  }
+
+  async update(id: string, data: UpdateServiceTypeDTO): Promise<ServiceType | null> {
+    const sets: string[] = ['updated_at=SYSDATE'];
+    const binds: Record<string, unknown> = { id };
+    if (data.name !== undefined)        { binds['name'] = data.name;              sets.push('name=:name'); }
+    if (data.code !== undefined)        { binds['code'] = data.code;              sets.push('code=:code'); }
+    if (data.description !== undefined) { binds['description'] = data.description; sets.push('description=:description'); }
+    if (data.routeLink !== undefined)   { binds['routeLink'] = data.routeLink;    sets.push('route_link=:routeLink'); }
+    if (data.icon !== undefined)        { binds['icon'] = data.icon;              sets.push('icon=:icon'); }
+    if (data.isActive !== undefined)    { binds['isActive'] = data.isActive ? 1 : 0; sets.push('is_active=:isActive'); }
+    await execute(this.pool, `UPDATE service_types SET ${sets.join(',')} WHERE id=:id`, binds);
+    return this.findById(id);
+  }
+
+  async delete(id: string): Promise<boolean> {
+    await execute(this.pool, `UPDATE service_types SET is_active=0, updated_at=SYSDATE WHERE id=:id`, { id });
     return true;
   }
 }

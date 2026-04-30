@@ -7,7 +7,8 @@ import {
   categories,
   tags,
   documentTypes,
-  systemSettings
+  systemSettings,
+  serviceTypes
 } from '../../schemas/mysql.schema';
 
 import type {
@@ -17,7 +18,8 @@ import type {
   ICategoryDAL,
   ITagDAL,
   IDocumentTypeDAL,
-  ISettingDAL
+  ISettingDAL,
+  IServiceTypeDAL
 } from '../interfaces/master.dal.interfaces';
 
 import type {
@@ -28,6 +30,7 @@ import type {
   Tag,
   DocumentType,
   SystemSetting,
+  ServiceType,
   CreateCountryDTO,
   UpdateCountryDTO,
   CreateStateDTO,
@@ -36,7 +39,9 @@ import type {
   UpdateCategoryDTO,
   CreateTagDTO,
   CreateDocumentTypeDTO,
-  UpsertSettingDTO
+  UpsertSettingDTO,
+  CreateServiceTypeDTO,
+  UpdateServiceTypeDTO
 } from '../../modules/coredata/coredata.types';
 
 import { randomUUID } from 'crypto';
@@ -558,6 +563,45 @@ export class MysqlSettingDAL implements ISettingDAL {
       .delete(systemSettings)
       .where(eq(systemSettings.key, key));
 
+    return true;
+  }
+}
+
+// ─── Service Type DAL ─────────────────────────────────────────────────────────
+export class MysqlServiceTypeDAL implements IServiceTypeDAL {
+  constructor(private db: MySql2Database<any>) {}
+
+  async findAll(activeOnly = true): Promise<ServiceType[]> {
+    const rows = activeOnly
+      ? await this.db.select().from(serviceTypes).where(eq(serviceTypes.isActive, true))
+      : await this.db.select().from(serviceTypes);
+    return rows as ServiceType[];
+  }
+
+  async findById(id: string): Promise<ServiceType | null> {
+    const r = await this.db.select().from(serviceTypes).where(eq(serviceTypes.id, id)).limit(1);
+    return (r[0] as ServiceType) ?? null;
+  }
+
+  async findByCode(code: string): Promise<ServiceType | null> {
+    const r = await this.db.select().from(serviceTypes).where(eq(serviceTypes.code, code)).limit(1);
+    return (r[0] as ServiceType) ?? null;
+  }
+
+  async create(data: CreateServiceTypeDTO): Promise<ServiceType> {
+    const id = randomUUID();
+    const now = new Date();
+    await this.db.insert(serviceTypes).values({ id, name: data.name, code: data.code, description: data.description ?? null, routeLink: data.routeLink ?? null, icon: data.icon ?? null, isActive: true, createdAt: now, updatedAt: now });
+    return (await this.findById(id))!;
+  }
+
+  async update(id: string, data: UpdateServiceTypeDTO): Promise<ServiceType | null> {
+    await this.db.update(serviceTypes).set({ ...(data as any), updatedAt: new Date() }).where(eq(serviceTypes.id, id));
+    return this.findById(id);
+  }
+
+  async delete(id: string): Promise<boolean> {
+    await this.db.update(serviceTypes).set({ isActive: false, updatedAt: new Date() }).where(eq(serviceTypes.id, id));
     return true;
   }
 }

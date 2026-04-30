@@ -3,6 +3,7 @@ import { asyncHandler } from '@prasad-rtns/shared';
 import {
   CountryController, StateController, CityController,
   CategoryController, TagController, DocumentTypeController, SettingsController,
+  ServiceTypeController,
 } from './coredata.controller';
 import { authenticate, authorize, userAuthenticate } from '../../middleware/auth.middleware';
 
@@ -46,5 +47,12 @@ router.get   ('/settings',        asyncHandler(SettingsController.listPublic));
 router.get   ('/settings/all',    authenticate, authorize('admin'), asyncHandler(SettingsController.listAll));
 router.post  ('/settings',        authenticate, authorize('admin'), asyncHandler(SettingsController.upsert));
 router.delete('/settings/:key',   authenticate, authorize('admin'), asyncHandler(SettingsController.remove));
+
+// Service Types
+router.get   ('/service-types',     asyncHandler(ServiceTypeController.list));
+router.get   ('/service-types/:id', asyncHandler(ServiceTypeController.getById));
+router.post  ('/service-types',     userAuthenticate, authorize('admin'), asyncHandler(ServiceTypeController.create));
+router.put   ('/service-types/:id', userAuthenticate, authorize('admin'), asyncHandler(ServiceTypeController.update));
+router.delete('/service-types/:id', userAuthenticate, authorize('admin'), asyncHandler(ServiceTypeController.remove));
 
 export default router;

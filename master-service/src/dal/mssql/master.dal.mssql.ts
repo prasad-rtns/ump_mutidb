@@ -1,4 +1,5 @@
 import { ConnectionPool } from 'mssql';
+import { randomUUID } from 'crypto';
 import type {
   ICountryDAL,
   IStateDAL,
@@ -6,9 +7,10 @@ import type {
   ICategoryDAL,
   ITagDAL,
   IDocumentTypeDAL,
-  ISettingDAL
+  ISettingDAL,
+  IServiceTypeDAL
 } from '../interfaces/master.dal.interfaces';
-import type { DocumentType, SystemSetting, UpsertSettingDTO } from '../../modules/coredata/coredata.types';
+import type { DocumentType, SystemSetting, UpsertSettingDTO, ServiceType, CreateServiceTypeDTO, UpdateServiceTypeDTO } from '../../modules/coredata/coredata.types';
 
 const now = () => new Date();
 
@@ -435,4 +437,52 @@ export class MssqlSettingDAL implements ISettingDAL {
             `);
         return r.rowsAffected[0] > 0;
     }
+}
+
+// ─── Service Type DAL ─────────────────────────────────────────────────────────
+export class MssqlServiceTypeDAL implements IServiceTypeDAL {
+  constructor(private pool: ConnectionPool) {}
+
+  async findAll(activeOnly = true): Promise<ServiceType[]> {
+    const q = activeOnly ? `SELECT * FROM service_types WHERE is_active = 1` : `SELECT * FROM service_types`;
+    const r = await this.pool.request().query(q);
+    return r.recordset;
+  }
+
+  async findById(id: string): Promise<ServiceType | null> {
+    const r = await this.pool.request().input('id', id).query(`SELECT * FROM service_types WHERE id = @id`);
+    return r.recordset[0] ?? null;
+  }
+
+  async findByCode(code: string): Promise<ServiceType | null> {
+    const r = await this.pool.request().input('code', code).query(`SELECT * FROM service_types WHERE code = @code`);
+    return r.recordset[0] ?? null;
+  }
+
+  async create(data: CreateServiceTypeDTO): Promise<ServiceType> {
+    const id = randomUUID();
+    await this.pool.request()
+      .input('id', id).input('name', data.name).input('code', data.code)
+      .input('description', data.description ?? null).input('routeLink', data.routeLink ?? null).input('icon', data.icon ?? null)
+      .query(`INSERT INTO service_types (id,name,code,description,route_link,icon,is_active,created_at,updated_at) VALUES (@id,@name,@code,@description,@routeLink,@icon,1,GETDATE(),GETDATE())`);
+    return (await this.findById(id))!;
+  }
+
+  async update(id: string, data: UpdateServiceTypeDTO): Promise<ServiceType | null> {
+    const sets: string[] = ['updated_at=GETDATE()'];
+    const req = this.pool.request().input('id', id);
+    if (data.name !== undefined)        { req.input('name', data.name);              sets.push('name=@name'); }
+    if (data.code !== undefined)        { req.input('code', data.code);              sets.push('code=@code'); }
+    if (data.description !== undefined) { req.input('description', data.description); sets.push('description=@description'); }
+    if (data.routeLink !== undefined)   { req.input('routeLink', data.routeLink);    sets.push('route_link=@routeLink'); }
+    if (data.icon !== undefined)        { req.input('icon', data.icon);              sets.push('icon=@icon'); }
+    if (data.isActive !== undefined)    { req.input('isActive', data.isActive ? 1 : 0); sets.push('is_active=@isActive'); }
+    await req.query(`UPDATE service_types SET ${sets.join(',')} WHERE id=@id`);
+    return this.findById(id);
+  }
+
+  async delete(id: string): Promise<boolean> {
+    const r = await this.pool.request().input('id', id).query(`UPDATE service_types SET is_active=0, updated_at=GETDATE() WHERE id=@id`);
+    return r.rowsAffected[0] > 0;
+  }
 }

@@ -8,7 +8,8 @@ import type {
   ICategoryDAL,
   ITagDAL,
   IDocumentTypeDAL,
-  ISettingDAL
+  ISettingDAL,
+  IServiceTypeDAL
 } from './interfaces/master.dal.interfaces';
 
 import {
@@ -27,7 +28,8 @@ import {
   PgCategoryDAL,
   PgTagDAL,
   PgDocumentTypeDAL,
-  PgSettingDAL
+  PgSettingDAL,
+  PgServiceTypeDAL
 } from './pg/master.dal.pg';
 
 import {
@@ -37,7 +39,8 @@ import {
   MysqlCategoryDAL,
   MysqlTagDAL,
   MysqlDocumentTypeDAL,
-  MysqlSettingDAL
+  MysqlSettingDAL,
+  MysqlServiceTypeDAL
 } from './mysql/master.dal.mysql';
 
 import {
@@ -47,7 +50,8 @@ import {
   MssqlCategoryDAL,
   MssqlTagDAL,
   MssqlDocumentTypeDAL,
-  MssqlSettingDAL
+  MssqlSettingDAL,
+  MssqlServiceTypeDAL
 } from './mssql/master.dal.mssql';
 
 import {
@@ -57,7 +61,8 @@ import {
   OracleCategoryDAL,
   OracleTagDAL,
   OracleDocumentTypeDAL,
-  OracleSettingDAL
+  OracleSettingDAL,
+  OracleServiceTypeDAL
 } from './oracle/master.dal.oracle';
 
 import {
@@ -67,7 +72,8 @@ import {
   MongoCategoryDAL,
   MongoTagDAL,
   MongoDocumentTypeDAL,
-  MongoSettingDAL
+  MongoSettingDAL,
+  MongoServiceTypeDAL
 } from './mongo/master.dal.mongo';
 
 export interface MasterDALBundle {
@@ -78,6 +84,7 @@ export interface MasterDALBundle {
   tag: ITagDAL;
   documentType: IDocumentTypeDAL;
   setting: ISettingDAL;
+  serviceType: IServiceTypeDAL;
 }
 
 export class MasterDALFactory {
@@ -95,6 +102,7 @@ export class MasterDALFactory {
           tag: new MongoTagDAL(db),
           documentType: new MongoDocumentTypeDAL(db),
           setting: new MongoSettingDAL(db),
+          serviceType: new MongoServiceTypeDAL(db),
         };
       }
 
@@ -108,6 +116,7 @@ export class MasterDALFactory {
           tag: new MssqlTagDAL(pool),
           documentType: new MssqlDocumentTypeDAL(pool),
           setting: new MssqlSettingDAL(pool),
+          serviceType: new MssqlServiceTypeDAL(pool),
         };
       }
 
@@ -121,6 +130,7 @@ export class MasterDALFactory {
           tag: new MysqlTagDAL(db),
           documentType: new MysqlDocumentTypeDAL(db),
           setting: new MysqlSettingDAL(db),
+          serviceType: new MysqlServiceTypeDAL(db),
         };
       }
 
@@ -134,6 +144,7 @@ export class MasterDALFactory {
           tag: new OracleTagDAL(pool),
           documentType: new OracleDocumentTypeDAL(pool),
           setting: new OracleSettingDAL(pool),
+          serviceType: new OracleServiceTypeDAL(pool),
         };
       }
 
@@ -149,6 +160,7 @@ export class MasterDALFactory {
           tag: new PgTagDAL(db),
           documentType: new PgDocumentTypeDAL(db),
           setting: new PgSettingDAL(db),
+          serviceType: new PgServiceTypeDAL(db),
         };
       }
     }
