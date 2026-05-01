@@ -4,6 +4,18 @@ services:
   wso2-apim:
     image: ump-wso2-apim:4.4.0
     hostname: wso2-apim
+    environment:
+      - WSO2_HOST=172.20.104.100
+      - WSO2_BASE_PATH=https://172.20.104.100:9443
+      - WSO2_DEVPORTAL_URL=https://172.20.104.100:9443/devportal
+      - WSO2_SERVICE_URL=https://172.20.104.100:9443/services/
+      - WSO2_WS_ENDPOINT=ws://172.20.104.100:9099
+      - WSO2_WSS_ENDPOINT=wss://172.20.104.100:8099
+      - WSO2_HTTP_ENDPOINT=http://172.20.104.100:8280
+      - WSO2_HTTPS_ENDPOINT=https://172.20.104.100:8243
+      - WSO2_WEBSUB_HTTP_ENDPOINT=http://172.20.104.100:9021
+      - WSO2_WEBSUB_HTTPS_ENDPOINT=https://172.20.104.100:8021
+      - WSO2_NOTIFICATION_ENDPOINT=https://172.20.104.100:9443/internal/data/v1/notify
     ports:
       - target: 9443
         published: 9443

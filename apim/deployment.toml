@@ -1,7 +1,8 @@
 [server]
-hostname = "localhost"
+hostname = "$env{WSO2_HOST}"
+internal_hostname = "$env{WSO2_HOST}"
 #offset=0
-base_path = "${carbon.protocol}://${carbon.host}:${carbon.management.port}"
+base_path = "$env{WSO2_BASE_PATH}"
 #discard_empty_caches = false
 server_role = "default"
 
@@ -12,6 +13,9 @@ create_admin_account = true
 
 [user_store]
 type = "database_unique_id"
+
+[apim.devportal]
+url = "$env{WSO2_DEVPORTAL_URL}"
 
 [database.apim_db]
 type = "h2"
@@ -40,15 +44,15 @@ provider = "wso2"
 display_in_api_console = true
 description = "This is a hybrid gateway that handles both production and sandbox token traffic."
 show_as_token_endpoint_url = true
-service_url = "https://localhost:${mgt.transport.https.port}/services/"
+service_url = "$env{WSO2_SERVICE_URL}"
 username = "${admin.username}"
 password = "${admin.password}"
-ws_endpoint = "ws://localhost:9099"
-wss_endpoint = "wss://localhost:8099"
-http_endpoint = "http://localhost:${http.nio.port}"
-https_endpoint = "https://localhost:${https.nio.port}"
-websub_event_receiver_http_endpoint = "http://localhost:9021"
-websub_event_receiver_https_endpoint = "https://localhost:8021"
+ws_endpoint = "$env{WSO2_WS_ENDPOINT}"
+wss_endpoint = "$env{WSO2_WSS_ENDPOINT}"
+http_endpoint = "$env{WSO2_HTTP_ENDPOINT}"
+https_endpoint = "$env{WSO2_HTTPS_ENDPOINT}"
+websub_event_receiver_http_endpoint = "$env{WSO2_WEBSUB_HTTP_ENDPOINT}"
+websub_event_receiver_https_endpoint = "$env{WSO2_WEBSUB_HTTPS_ENDPOINT}"
 
 [[apim.gateway.environment.virtual_host]]
 ws_endpoint = "ws://us.wso2.com:9099"
@@ -102,7 +106,7 @@ type = "org.wso2.carbon.identity.core.handler.AbstractIdentityHandler"
 name = "org.wso2.is.notification.ApimOauthEventInterceptor"
 order = 1
 [event_listener.properties]
-notification_endpoint = "https://localhost:${mgt.transport.https.port}/internal/data/v1/notify"
+notification_endpoint = "$env{WSO2_NOTIFICATION_ENDPOINT}"
 username = "${admin.username}"
 password = "${admin.password}"
 'header.X-WSO2-KEY-MANAGER' = "default"

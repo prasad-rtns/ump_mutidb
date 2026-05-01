@@ -44,7 +44,7 @@ scp D:\docker-exports\wso2\ump-wso2-apim-4.4.0.tar svcadm@172.20.104.100:/tmp/ws
 Copy the Swarm stack file:
 
 ```powershell
-scp .\apim\docker-stack.wso2.yml svcadm@172.20.104.100:/tmp/wso2/
+scp D:\docker-exports\wso2\docker-stack.wso2.yml svcadm@172.20.104.100:/tmp/wso2/
 ```
 
 If using Git Bash, use this path format:
@@ -65,6 +65,7 @@ sudo su
 
 ```bash
 docker stack rm ump-wso2
+`docker volume rm ump-wso2_wso2_repository_database ump-wso2_wso2_repository_deployment 2>/dev/null`
 docker service rm ump-wso2_wso2-apim 2>/dev/null
 docker rm -f $(docker ps -aq --filter ancestor=ump-wso2-apim:4.4.0) 2>/dev/null
 docker rmi ump-wso2-apim:4.4.0 2>/dev/null
@@ -92,6 +93,7 @@ docker image ls | grep ump-wso2-apim
 cd /tmp/wso2
 
 docker stack deploy --resolve-image never --compose-file docker-stack.wso2.yml ump-wso2
+docker service update --force ump-wso2_wso2-apim
 ```
 
 ## 8. Verify Deployment
