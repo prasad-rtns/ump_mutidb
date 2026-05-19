@@ -11,6 +11,10 @@ import logger from './database/logger';
 
 const PORT = parseInt(process.env.PORT || '6001');
 const HOST = process.env.HOST || '0.0.0.0';
+const allowedOrigins = (process.env.ALLOWED_ORIGINS || process.env.FRONTEND_URL || 'http://localhost:8082')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
 
 app.use(
   helmet({
@@ -19,7 +23,7 @@ app.use(
 );
 app.use(
   cors({
-    origin: [process.env.FRONTEND_URL || 'http://localhost:8082'],
+    origin: allowedOrigins,
     credentials: true,
   })
 );

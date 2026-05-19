@@ -123,14 +123,15 @@ export class OracleUserDAL implements IUserDAL {
     const id  = uuidv4();
     await this.exec(`
       INSERT INTO users (id, username, email, password, first_name, last_name, phone, avatar,
-                         role_id, department_id, designation_id, status, is_email_verified,
+                         role_id, department_id, designation_id, user_category, status, is_email_verified,
                          failed_login_attempts, two_factor_enabled, created_by, created_at, updated_at)
       VALUES (:id, :username, :email, :password, :firstName, :lastName, :phone, :avatar,
-              :roleId, :deptId, :desigId, 'active', 0, 0, 0, :createdBy, SYSDATE, SYSDATE)`,
+              :roleId, :deptId, :desigId, :userCategory, 'active', 0, 0, 0, :createdBy, SYSDATE, SYSDATE)`,
       {
         id, username: data.username, email: data.email.toLowerCase(), password: data.password,
         firstName: data.firstName, lastName: data.lastName, phone: data.phone ?? null, avatar: data.avatar ?? null,
-        roleId: data.roleId, deptId: data.departmentId, desigId: data.designationId, createdBy: data.createdBy ?? null,
+        roleId: data.roleId, deptId: data.departmentId, desigId: data.designationId,
+        userCategory: data.userCategory ?? 'internal', createdBy: data.createdBy ?? null,
       }
     );
     return (await this.findById(id))!;
@@ -229,6 +230,7 @@ export class OracleUserDAL implements IUserDAL {
       roleId:                 g('role_id') as string,
       departmentId:           g('department_id') as string,
       designationId:          g('designation_id') as string,
+      userCategory:           (g('user_category') ?? 'internal') as IUser['userCategory'],
       status:                 g('status') as IUser['status'],
       isEmailVerified:        Boolean(g('is_email_verified')),
       emailVerificationToken: (g('email_verification_token') ?? null) as string | null,

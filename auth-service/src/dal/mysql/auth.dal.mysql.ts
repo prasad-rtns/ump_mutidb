@@ -26,6 +26,7 @@ const now = () => new Date();
 
 const mapUser = (row: typeof users.$inferSelect): IUser => ({
   ...row,
+  userCategory: row.userCategory ?? 'internal',
   phone: row.phone ?? null,
   avatar: row.avatar ?? null,
   emailVerificationToken: row.emailVerificationToken ?? null,
@@ -172,6 +173,7 @@ export class MysqlUserDAL implements IUserDAL {
       roleId: data.roleId,
       departmentId: data.departmentId,
       designationId: data.designationId,
+      userCategory: data.userCategory ?? 'internal',
       status: 'active',
       isEmailVerified: false,
       failedLoginAttempts: 0,

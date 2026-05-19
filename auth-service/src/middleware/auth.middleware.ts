@@ -8,6 +8,27 @@ const tokenCache = new CacheService('auth');
 const dbType = (req: Request): DatabaseType =>
   (req.dbType as DatabaseType) || (process.env.DEFAULT_DB_TYPE as DatabaseType) || 'postgres';
 
+function localAuthFallbackEnabled() {
+  return (process.env.ALLOW_LOCAL_AUTH_FALLBACK || 'false').toLowerCase() === 'true';
+}
+
+function isTrustedLocalRequest(req: Request) {
+  const forwardedHost = req.headers['x-forwarded-host'];
+  const host = Array.isArray(forwardedHost) ? forwardedHost[0] : forwardedHost || req.headers.host;
+  const sources = [req.headers.origin, req.headers.referer, host ? `http://${host}` : undefined]
+    .filter((value): value is string => typeof value === 'string')
+    .map((value) => value.toLowerCase());
+
+  return sources.some((value) =>
+    value.startsWith('http://localhost') ||
+    value.startsWith('https://localhost') ||
+    value.startsWith('http://127.0.0.1') ||
+    value.startsWith('https://127.0.0.1') ||
+    value.startsWith('http://auth-service') ||
+    value.startsWith('https://auth-service'),
+  );
+}
+
 export const authenticate = async (
   req: Request,
   res: Response,
@@ -21,7 +42,8 @@ export const authenticate = async (
     }
 
     const authProvider = AuthProviderService.getProvider();
-    if (authProvider === 'local') {
+    const useLocalAuth = authProvider === 'local' || (localAuthFallbackEnabled() && isTrustedLocalRequest(req));
+    if (useLocalAuth) {
       const isBlacklisted = await tokenCache.isBlacklisted(token);
       if (isBlacklisted) {
         ResponseUtil.unauthorized(res, 'Token has been revoked');

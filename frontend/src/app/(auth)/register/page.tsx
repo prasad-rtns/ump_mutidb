@@ -39,11 +39,11 @@ export default function RegisterPage() {
 
   const deptId = watch('departmentId');
 
-  const { data: roles }       = useQuery<IRole[]>({ queryKey: ['roles'],       queryFn: async () => (await authApi.get('/master/roles')).data.data });
-  const { data: departments } = useQuery<IDepartment[]>({ queryKey: ['departments'], queryFn: async () => (await authApi.get('/master/departments')).data.data });
+  const { data: roles }       = useQuery<IRole[]>({ queryKey: ['roles'],       queryFn: async () => (await authApi.get('/auth/master/roles')).data.data });
+  const { data: departments } = useQuery<IDepartment[]>({ queryKey: ['departments'], queryFn: async () => (await authApi.get('/auth/master/departments')).data.data });
   const { data: designations } = useQuery<IDesignation[]>({
     queryKey: ['designations', deptId],
-    queryFn: async () => (await authApi.get(`/master/designations?departmentId=${deptId}`)).data.data,
+    queryFn: async () => (await authApi.get(`/auth/master/designations?departmentId=${deptId}`)).data.data,
     enabled: !!deptId,
   });
 

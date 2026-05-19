@@ -5,6 +5,7 @@ import Cookies from 'js-cookie';
 // This works identically in dev (→ localhost:3001/3002) and in Docker (→ auth-service:6001, master-service:6002).
 const AUTH_API   = '/proxy/auth';
 const MASTER_API = '/proxy/master';
+const DOCUMENT_API = '/proxy/documents';
 
 function createClient(baseURL: string) {
   const client = axios.create({ baseURL, timeout: 15000 });
@@ -12,7 +13,6 @@ function createClient(baseURL: string) {
   client.interceptors.request.use((config: InternalAxiosRequestConfig) => {
     const token = Cookies.get('access_token');
     if (token) config.headers.Authorization = `Bearer ${token}`;
-    config.headers['X-DB-Type'] = Cookies.get('db_type') || 'postgres';
     return config;
   });
 
@@ -50,6 +50,7 @@ function createClient(baseURL: string) {
 
 export const authApi   = createClient(AUTH_API);
 export const masterApi = createClient(MASTER_API);
+export const documentApi = createClient(DOCUMENT_API);
 
 export function apiErrorMessage(error: unknown): string {
   if (axios.isAxiosError(error)) {

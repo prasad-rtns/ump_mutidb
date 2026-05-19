@@ -2,11 +2,12 @@
 import { useAuthStore, hasPermission, hasRole } from '@/stores/auth.store';
 
 export function useAuth() {
-  const { user, isAuthenticated, setAuth, clearAuth, updateUser } = useAuthStore();
+  const { user, isAuthenticated, hasHydrated, setAuth, clearAuth, updateUser } = useAuthStore();
 
   return {
     user,
     isAuthenticated,
+    hasHydrated,
     setAuth,
     logout: clearAuth,
     updateUser,

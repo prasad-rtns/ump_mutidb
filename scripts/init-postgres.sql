@@ -68,6 +68,7 @@ CREATE TABLE IF NOT EXISTS users (
     role_id UUID NOT NULL REFERENCES roles(id),
     department_id UUID NOT NULL REFERENCES departments(id),
     designation_id UUID NOT NULL REFERENCES designations(id),
+    user_category user_category DEFAULT 'internal' NOT NULL,
     status user_status DEFAULT 'active' NOT NULL,
     is_email_verified BOOLEAN DEFAULT FALSE NOT NULL,
     email_verification_token TEXT,
@@ -89,6 +90,7 @@ CREATE INDEX idx_users_email ON users(email);
 CREATE INDEX idx_users_username ON users(username);
 CREATE INDEX idx_users_role_id ON users(role_id);
 CREATE INDEX idx_users_department_id ON users(department_id);
+CREATE INDEX idx_users_user_category ON users(user_category);
 CREATE INDEX idx_users_status ON users(status);
 
 -- Sessions
@@ -154,7 +156,7 @@ ON CONFLICT (code) DO NOTHING;
 -- Admin user (password: Admin@1234)
 INSERT INTO users (
     id, username, email, password, first_name, last_name,
-    role_id, department_id, designation_id, status, is_email_verified
+    role_id, department_id, designation_id, user_category, status, is_email_verified
 ) VALUES (
     '880e8400-e29b-41d4-a716-446655440001',
     'admin', 'admin@ump-platform.com',
@@ -163,6 +165,7 @@ INSERT INTO users (
     '550e8400-e29b-41d4-a716-446655440001',
     '660e8400-e29b-41d4-a716-446655440005',
     '770e8400-e29b-41d4-a716-446655440006',
+    'admin',
     'active', TRUE
 ) ON CONFLICT (email) DO NOTHING;
 

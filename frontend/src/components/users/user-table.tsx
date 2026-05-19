@@ -48,9 +48,9 @@ export function UserTable({ category, title }: Props) {
 
   const canManage = ['super_admin','admin'].includes(me?.role?.slug ?? '');
 
-  const { data: roles }       = useQuery<IRole[]>({ queryKey: ['roles'],       queryFn: async () => (await authApi.get('/master/roles')).data.data });
-  const { data: departments } = useQuery<IDepartment[]>({ queryKey: ['departments'], queryFn: async () => (await authApi.get('/master/departments')).data.data });
-  const { data: designations } = useQuery<IDesignation[]>({ queryKey: ['designations'], queryFn: async () => (await authApi.get('/master/designations')).data.data });
+  const { data: roles }       = useQuery<IRole[]>({ queryKey: ['roles'],       queryFn: async () => (await authApi.get('/auth/master/roles')).data.data });
+  const { data: departments } = useQuery<IDepartment[]>({ queryKey: ['departments'], queryFn: async () => (await authApi.get('/auth/master/departments')).data.data });
+  const { data: designations } = useQuery<IDesignation[]>({ queryKey: ['designations'], queryFn: async () => (await authApi.get('/auth/master/designations')).data.data });
 
   const { data, isLoading } = useQuery({
     queryKey: ['users', category, page, search],

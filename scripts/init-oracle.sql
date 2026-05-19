@@ -61,6 +61,8 @@ CREATE TABLE users (
   role_id                   VARCHAR2(36)  NOT NULL REFERENCES roles(id),
   department_id             VARCHAR2(36)  NOT NULL REFERENCES departments(id),
   designation_id            VARCHAR2(36)  NOT NULL REFERENCES designations(id),
+  user_category             VARCHAR2(20)  DEFAULT 'internal' NOT NULL
+                              CHECK (user_category IN ('external','internal','admin')),
   status                    VARCHAR2(20)  DEFAULT 'active' NOT NULL
                               CHECK (status IN ('active','inactive','suspended')),
   is_email_verified         NUMBER(1)     DEFAULT 0 NOT NULL,
@@ -138,13 +140,14 @@ INSERT INTO designations (name, code, department_id, level)
 
 -- Admin user (password: Admin@1234)
 INSERT INTO users (id, username, email, password, first_name, last_name,
-                   role_id, department_id, designation_id, status, is_email_verified)
+                   role_id, department_id, designation_id, user_category, status, is_email_verified)
 SELECT SYS_GUID(), 'sysadmin', 'admin@ump-platform.com',
        '$2a$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQyCaBxHxOmqhStX6ND.LPzJW',
        'System', 'Admin',
        (SELECT id FROM roles WHERE slug = 'admin'),
        (SELECT id FROM departments WHERE code = 'OPS'),
        (SELECT id FROM designations WHERE code = 'SYS_ADM'),
+       'admin',
        'active', 1
 FROM DUAL;
 

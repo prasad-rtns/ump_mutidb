@@ -16,8 +16,10 @@ COPY . .
 # not baked into the client bundle (no NEXT_PUBLIC_ prefix)
 ARG AUTH_SERVICE_URL=http://auth-service:6001/api/v1
 ARG MASTER_SERVICE_URL=http://master-service:6002/api/v1
+ARG DOCUMENT_SERVICE_URL=http://document-service:6003/api/v1
 ENV AUTH_SERVICE_URL=$AUTH_SERVICE_URL
 ENV MASTER_SERVICE_URL=$MASTER_SERVICE_URL
+ENV DOCUMENT_SERVICE_URL=$DOCUMENT_SERVICE_URL
 
 RUN npm run build
 
@@ -49,6 +51,7 @@ ENV NODE_ENV=production \
 # Runtime env vars — injected by docker-compose, not baked into the image
 ENV AUTH_SERVICE_URL=http://auth-service:6001/api/v1
 ENV MASTER_SERVICE_URL=http://master-service:6002/api/v1
+ENV DOCUMENT_SERVICE_URL=http://document-service:6003/api/v1
 
 EXPOSE 3000
 

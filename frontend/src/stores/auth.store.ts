@@ -7,8 +7,10 @@ interface AuthState {
   user: IUser | null;
   accessToken: string | null;
   isAuthenticated: boolean;
+  hasHydrated: boolean;
   setAuth: (user: IUser, accessToken: string, refreshToken: string) => void;
   clearAuth: () => void;
+  setHasHydrated: (hasHydrated: boolean) => void;
   updateUser: (user: Partial<IUser>) => void;
 }
 
@@ -18,6 +20,7 @@ export const useAuthStore = create<AuthState>()(
       user: null,
       accessToken: null,
       isAuthenticated: false,
+      hasHydrated: false,
 
       setAuth: (user, accessToken, refreshToken) => {
         Cookies.set('access_token', accessToken, { expires: 1, sameSite: 'strict' });
@@ -31,12 +34,17 @@ export const useAuthStore = create<AuthState>()(
         set({ user: null, accessToken: null, isAuthenticated: false });
       },
 
+      setHasHydrated: (hasHydrated) => set({ hasHydrated }),
+
       updateUser: (partial) =>
         set((s) => ({ user: s.user ? { ...s.user, ...partial } : null })),
     }),
     {
       name: 'ump-auth',
       partialize: (s) => ({ user: s.user, accessToken: s.accessToken, isAuthenticated: s.isAuthenticated }),
+      onRehydrateStorage: () => (state) => {
+        state?.setHasHydrated(true);
+      },
     },
   ),
 );

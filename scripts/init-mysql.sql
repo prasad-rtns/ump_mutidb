@@ -63,6 +63,7 @@ CREATE TABLE IF NOT EXISTS users (
     role_id CHAR(36) NOT NULL,
     department_id CHAR(36) NOT NULL,
     designation_id CHAR(36) NOT NULL,
+    user_category ENUM('external','internal','admin') DEFAULT 'internal' NOT NULL,
     status ENUM('active','inactive','suspended') DEFAULT 'active' NOT NULL,
     is_email_verified TINYINT(1) DEFAULT 0 NOT NULL,
     email_verification_token VARCHAR(255),
@@ -82,6 +83,7 @@ CREATE TABLE IF NOT EXISTS users (
     INDEX idx_username (username),
     INDEX idx_role_id (role_id),
     INDEX idx_dept_id (department_id),
+    INDEX idx_user_category (user_category),
     INDEX idx_status (status),
     FOREIGN KEY (role_id) REFERENCES roles(id),
     FOREIGN KEY (department_id) REFERENCES departments(id),
@@ -146,7 +148,7 @@ INSERT IGNORE INTO designations (id, name, code, department_id, level) VALUES
 -- Admin user (password: Admin@1234)
 INSERT IGNORE INTO users (
     id, username, email, password, first_name, last_name,
-    role_id, department_id, designation_id, status, is_email_verified
+    role_id, department_id, designation_id, user_category, status, is_email_verified
 ) VALUES (
     '880e8400-e29b-41d4-a716-446655440001',
     'admin', 'admin@ump-platform.com',
@@ -155,6 +157,7 @@ INSERT IGNORE INTO users (
     '550e8400-e29b-41d4-a716-446655440001',
     '660e8400-e29b-41d4-a716-446655440005',
     '770e8400-e29b-41d4-a716-446655440006',
+    'admin',
     'active', 1
 );
 
@@ -261,6 +264,18 @@ CREATE TABLE IF NOT EXISTS notification_templates (
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS service_types (
+    id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    name VARCHAR(200) NOT NULL,
+    code VARCHAR(50) NOT NULL UNIQUE,
+    description TEXT,
+    route_link VARCHAR(500),
+    icon VARCHAR(100),
+    is_active TINYINT(1) DEFAULT 1 NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP NOT NULL
+);
+
 -- Seed countries
 INSERT IGNORE INTO countries (name, code, dial_code, flag, currency, currency_symbol) VALUES
     ('United States', 'US', '+1', 'US', 'USD', '$'),
@@ -281,6 +296,12 @@ INSERT IGNORE INTO document_types (name, code, allowed_mime_types, max_size_mb) 
     ('Contract', 'CONTRACT', '["application/pdf","application/msword"]', 20),
     ('Invoice', 'INVOICE', '["application/pdf","image/jpeg"]', 10),
     ('Report', 'REPORT', '["application/pdf","application/vnd.openxmlformats-officedocument.wordprocessingml.document"]', 50);
+
+-- Seed service types
+INSERT IGNORE INTO service_types (name, code, description, route_link, icon) VALUES
+    ('Employee Services', 'EMPLOYEE_SERVICES', 'Employee onboarding and profile management services', '/services/employees', 'users'),
+    ('Document Services', 'DOCUMENT_SERVICES', 'Document upload, review, and approval services', '/services/documents', 'file-text'),
+    ('Master Data Services', 'MASTER_DATA_SERVICES', 'Reference data and platform configuration services', '/services/master-data', 'layers');
 
 -- Seed system settings
 INSERT IGNORE INTO system_settings (`key`, value, type, description, is_public, category) VALUES

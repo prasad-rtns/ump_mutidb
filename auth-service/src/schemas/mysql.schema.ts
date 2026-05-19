@@ -53,6 +53,7 @@ export const users = mysqlTable('users', {
   roleId: varchar('role_id', { length: 36 }).notNull(),
   departmentId: varchar('department_id', { length: 36 }).notNull(),
   designationId: varchar('designation_id', { length: 36 }).notNull(),
+  userCategory: mysqlEnum('user_category', ['external', 'internal', 'admin']).default('internal').notNull(),
   status: mysqlEnum('status', ['active', 'inactive', 'suspended']).default('active').notNull(),
   isEmailVerified: boolean('is_email_verified').default(false).notNull(),
   emailVerificationToken: text('email_verification_token'),

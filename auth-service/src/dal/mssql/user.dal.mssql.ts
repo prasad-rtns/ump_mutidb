@@ -115,14 +115,15 @@ export class MssqlUserDAL implements IUserDAL {
       .input('roleId', data.roleId)
       .input('departmentId', data.departmentId)
       .input('designationId', data.designationId)
+      .input('userCategory', data.userCategory ?? 'internal')
       .input('createdBy', data.createdBy ?? null)
       .input('now', now)
       .query(`
         INSERT INTO users (id, username, email, password, first_name, last_name, phone, avatar,
-                           role_id, department_id, designation_id, status, is_email_verified,
+                           role_id, department_id, designation_id, user_category, status, is_email_verified,
                            failed_login_attempts, two_factor_enabled, created_by, created_at, updated_at)
         VALUES (@id, @username, @email, @password, @firstName, @lastName, @phone, @avatar,
-                @roleId, @departmentId, @designationId, 'active', 0, 0, 0, @createdBy, @now, @now)
+                @roleId, @departmentId, @designationId, @userCategory, 'active', 0, 0, 0, @createdBy, @now, @now)
       `);
     const user = await this.findById(id);
     return user!;
@@ -216,6 +217,7 @@ export class MssqlUserDAL implements IUserDAL {
       roleId:                 (row.role_id ?? row.roleId) as string,
       departmentId:           (row.department_id ?? row.departmentId) as string,
       designationId:          (row.designation_id ?? row.designationId) as string,
+      userCategory:           (row.user_category ?? row.userCategory ?? 'internal') as IUser['userCategory'],
       status:                 row.status as IUser['status'],
       isEmailVerified:        Boolean(row.is_email_verified),
       emailVerificationToken: (row.email_verification_token ?? null) as string | null,

@@ -85,6 +85,7 @@ BEGIN
     role_id NVARCHAR(36) NOT NULL,
     department_id NVARCHAR(36) NOT NULL,
     designation_id NVARCHAR(36) NOT NULL,
+    user_category NVARCHAR(20) NOT NULL DEFAULT 'internal',
     status NVARCHAR(20) NOT NULL DEFAULT 'active',
     is_email_verified BIT NOT NULL DEFAULT 0,
     email_verification_token NVARCHAR(255) NULL,
@@ -100,6 +101,7 @@ BEGIN
     updated_by NVARCHAR(36) NULL,
     created_at DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
     updated_at DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
+    CONSTRAINT CHK_users_category CHECK (user_category IN ('external', 'internal', 'admin')),
     CONSTRAINT CHK_users_status CHECK (status IN ('active', 'inactive', 'suspended')),
     CONSTRAINT FK_users_role FOREIGN KEY (role_id) REFERENCES dbo.roles(id),
     CONSTRAINT FK_users_department FOREIGN KEY (department_id) REFERENCES dbo.departments(id),
@@ -181,7 +183,7 @@ IF NOT EXISTS (SELECT 1 FROM dbo.users WHERE email = 'admin@ump-platform.com')
 BEGIN
   INSERT INTO dbo.users (
     id, username, email, password, first_name, last_name,
-    role_id, department_id, designation_id, status, is_email_verified,
+    role_id, department_id, designation_id, user_category, status, is_email_verified,
     created_at, updated_at
   )
   VALUES (
@@ -194,6 +196,7 @@ BEGIN
     N'550e8400-e29b-41d4-a716-446655440001',
     N'660e8400-e29b-41d4-a716-446655440005',
     N'770e8400-e29b-41d4-a716-446655440006',
+    N'admin',
     N'active',
     1,
     SYSUTCDATETIME(),

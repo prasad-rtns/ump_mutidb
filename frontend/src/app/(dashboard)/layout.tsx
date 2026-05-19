@@ -5,14 +5,14 @@ import { useAuthStore } from '@/stores/auth.store';
 import { Sidebar } from '@/components/layout/sidebar';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated } = useAuthStore();
+  const { isAuthenticated, hasHydrated } = useAuthStore();
   const router = useRouter();
 
   useEffect(() => {
-    if (!isAuthenticated) router.replace('/login');
-  }, [isAuthenticated, router]);
+    if (hasHydrated && !isAuthenticated) router.replace('/login');
+  }, [hasHydrated, isAuthenticated, router]);
 
-  if (!isAuthenticated) return null;
+  if (!hasHydrated || !isAuthenticated) return null;
 
   return (
     <div className="flex h-screen overflow-hidden">
