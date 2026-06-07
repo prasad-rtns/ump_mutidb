@@ -27,6 +27,25 @@ export class DocumentController {
     return ResponseUtil.created(res, doc, 'Document uploaded successfully');
   }
 
+  // POST /api/documents/upload/profile-photo
+  static async uploadProfilePhoto(req: Request, res: Response) {
+    if (!req.file) return ResponseUtil.error(res, 'No file provided', 400);
+    const svc = await DocumentService.create();
+    const input: UploadInput = {
+      file: req.file,
+      provider: req.query.provider as StorageProviderType,
+      folder: 'user-photos',
+      name: req.body.name || req.file.originalname,
+      entityType: 'user-profile',
+      entityId: req.body.entityId,
+      tags: ['profile-photo'],
+      metadata: { purpose: 'user-profile-photo' },
+      uploadedBy: req.user!.sub,
+    };
+    const doc = await svc.uploadSingle(input);
+    return ResponseUtil.created(res, doc, 'Profile photo uploaded successfully');
+  }
+
   // POST /api/documents/upload-bulk
   static async uploadBulk(req: Request, res: Response) {
     const files = req.files as Express.Multer.File[];

@@ -66,6 +66,11 @@ interface ModuleNode extends IModuleMenu {
   children: ModuleNode[];
 }
 
+interface SidebarProps {
+  className?: string;
+  onNavigate?: () => void;
+}
+
 function iconFor(icon?: string | null) {
   if (!icon) return Layers;
   return ICON_MAP[icon.replace(/\s+/g, '').toLowerCase()] ?? Layers;
@@ -102,7 +107,7 @@ function nodeContainsPath(module: ModuleNode, pathname: string): boolean {
   return module.children.some((child) => nodeContainsPath(child, pathname));
 }
 
-export function Sidebar() {
+export function Sidebar({ className, onNavigate }: SidebarProps) {
   const pathname = usePathname();
   const { user, logout, canAny } = useAuth();
   const [open, setOpen] = useState<Record<string, boolean>>({});
@@ -142,7 +147,7 @@ export function Sidebar() {
         'flex items-center gap-2.5 py-2 rounded-md text-sm transition-colors',
         padding,
         active ? 'bg-sidebar-primary text-sidebar-primary-foreground' : 'text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
-      )}>
+      )} onClick={onNavigate}>
         <Icon className="h-4 w-4 shrink-0" />
         <span className="truncate">{module.name}</span>
       </Link>
@@ -186,7 +191,7 @@ export function Sidebar() {
   }
 
   return (
-    <aside className="w-60 shrink-0 bg-sidebar flex flex-col h-screen sticky top-0 overflow-y-auto">
+    <aside className={cn('w-60 shrink-0 bg-sidebar flex flex-col h-screen overflow-y-auto', className)}>
       <div className="px-4 py-5 border-b border-sidebar-border">
         <p className="text-sidebar-foreground font-bold text-lg">UMP Admin</p>
         <p className="text-sidebar-foreground/60 text-xs truncate">{user?.email}</p>
@@ -199,7 +204,10 @@ export function Sidebar() {
       <div className="px-2 py-3 border-t border-sidebar-border">
         <button
           type="button"
-          onClick={() => logout()}
+          onClick={() => {
+            logout();
+            onNavigate?.();
+          }}
           className="flex items-center gap-2.5 w-full px-3 py-2 rounded-md text-sm text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
         >
           <LogOut className="h-4 w-4" />

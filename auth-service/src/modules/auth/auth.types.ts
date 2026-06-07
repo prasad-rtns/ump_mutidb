@@ -7,10 +7,12 @@ export interface RegisterInput {
   firstName: string;
   lastName: string;
   phone?: string;
+  avatar?: string;
   roleId: string;
   companyId?: string | null;
   departmentId: string;
   designationId: string;
+  userCategory?: IUser['userCategory'];
 }
 
 export interface LoginInput {

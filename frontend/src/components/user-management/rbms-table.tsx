@@ -206,11 +206,11 @@ function PermissionSelector({
                       <span className="block truncate text-xs text-muted-foreground">{module.code} - {module.route}</span>
                     </span>
                   </button>
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2 sm:flex-nowrap">
                     <Badge variant={moduleComplete ? 'success' : moduleSelected > 0 ? 'secondary' : 'outline'}>
                       {moduleSelected}/{modulePermissions.length}
                     </Badge>
-                    <Button type="button" size="sm" variant={moduleComplete ? 'default' : 'outline'} onClick={() => toggleModule(module)}>
+                    <Button type="button" size="sm" variant={moduleComplete ? 'default' : 'outline'} className="flex-1 sm:flex-none" onClick={() => toggleModule(module)}>
                       <Check className="mr-2 h-4 w-4" />
                       {moduleComplete ? 'Clear Module' : 'Allow Module'}
                     </Button>
@@ -339,9 +339,9 @@ function EntityForm({
         })}
       </div>
 
-      <div className="flex justify-end gap-2 border-t pt-3">
-        <Button type="button" variant="outline" onClick={onCancel}>Cancel</Button>
-        <Button type="submit" disabled={saving}>
+      <div className="flex flex-col-reverse gap-2 border-t pt-3 sm:flex-row sm:justify-end">
+        <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={onCancel}>Cancel</Button>
+        <Button type="submit" className="w-full sm:w-auto" disabled={saving}>
           {saving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving...</> : 'Save'}
         </Button>
       </div>
@@ -416,13 +416,13 @@ export function RbmsTable({ config }: { config: RbmsConfig }) {
         <p className="text-muted-foreground text-sm mt-1">{config.description}</p>
       </div>
 
-      <div className="flex items-center justify-between gap-2 flex-wrap">
-        <div className="relative w-72">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="relative w-full sm:w-72">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input className="pl-8" placeholder={`Search ${config.title.toLowerCase()}...`} value={search} onChange={(event) => setSearch(event.target.value)} />
         </div>
         {canCreate && (
-          <Button size="sm" onClick={() => { setCreating(true); setEditing(null); }}>
+          <Button size="sm" className="w-full sm:w-auto" onClick={() => { setCreating(true); setEditing(null); }}>
             <Plus className="mr-1 h-4 w-4" /> Add
           </Button>
         )}
@@ -438,35 +438,80 @@ export function RbmsTable({ config }: { config: RbmsConfig }) {
         <EntityForm config={config} row={editing} saving={saving} onCancel={() => { setCreating(false); setEditing(null); }} onSubmit={(body) => save(editing, body)} />
       )}
 
-      {canRead && <div className="rounded-md border overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead className="bg-muted/50">
-            <tr>
-              {config.columns.map((column) => <th key={column.key} className="px-4 py-3 text-left font-medium text-muted-foreground">{column.label}</th>)}
-              <th className="px-4 py-3 text-right font-medium text-muted-foreground">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {query.isLoading && <tr><td className="py-8 text-center" colSpan={config.columns.length + 1}><Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" /></td></tr>}
-            {!query.isLoading && rows.length === 0 && <tr><td className="py-8 text-center text-muted-foreground" colSpan={config.columns.length + 1}>No records found.</td></tr>}
-            {!query.isLoading && rows.map((row) => (
-              <tr key={String(row[idField])} className="border-t hover:bg-muted/30">
-                {config.columns.map((column) => (
-                  <td key={column.key} className="px-4 py-3">
-                    {column.render ? column.render(row) : String(row[column.key] ?? '')}
-                  </td>
+      {canRead && (
+        <>
+          <div className="hidden rounded-md border overflow-x-auto md:block">
+            <table className="w-full text-sm">
+              <thead className="bg-muted/50">
+                <tr>
+                  {config.columns.map((column) => <th key={column.key} className="px-4 py-3 text-left font-medium text-muted-foreground">{column.label}</th>)}
+                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {query.isLoading && <tr><td className="py-8 text-center" colSpan={config.columns.length + 1}><Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" /></td></tr>}
+                {!query.isLoading && rows.length === 0 && <tr><td className="py-8 text-center text-muted-foreground" colSpan={config.columns.length + 1}>No records found.</td></tr>}
+                {!query.isLoading && rows.map((row) => (
+                  <tr key={String(row[idField])} className="border-t hover:bg-muted/30">
+                    {config.columns.map((column) => (
+                      <td key={column.key} className="px-4 py-3">
+                        {column.render ? column.render(row) : String(row[column.key] ?? '')}
+                      </td>
+                    ))}
+                    <td className="px-4 py-3">
+                      <div className="flex justify-end gap-1">
+                        {canUpdate && <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => { setEditing(row); setCreating(false); }}><Pencil className="h-3.5 w-3.5" /></Button>}
+                        {canDelete && <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => remove(row)}><Trash2 className="h-3.5 w-3.5" /></Button>}
+                      </div>
+                    </td>
+                  </tr>
                 ))}
-                <td className="px-4 py-3">
-                  <div className="flex justify-end gap-1">
-                    {canUpdate && <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => { setEditing(row); setCreating(false); }}><Pencil className="h-3.5 w-3.5" /></Button>}
-                    {canDelete && <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => remove(row)}><Trash2 className="h-3.5 w-3.5" /></Button>}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="space-y-3 md:hidden">
+            {query.isLoading && (
+              <div className="rounded-md border bg-card py-8 text-center">
+                <Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            )}
+            {!query.isLoading && rows.length === 0 && (
+              <div className="rounded-md border bg-card px-4 py-8 text-center text-sm text-muted-foreground">
+                No records found.
+              </div>
+            )}
+            {!query.isLoading && rows.map((row) => (
+              <div key={String(row[idField])} className="rounded-md border bg-card p-4">
+                <div className="space-y-3">
+                  {config.columns.map((column) => (
+                    <div key={column.key} className="grid grid-cols-[7rem_1fr] gap-3 text-sm">
+                      <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{column.label}</span>
+                      <div className="min-w-0 break-words">
+                        {column.render ? column.render(row) : String(row[column.key] ?? '')}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {(canUpdate || canDelete) && (
+                  <div className="mt-4 flex gap-2 border-t pt-3">
+                    {canUpdate && (
+                      <Button size="sm" variant="outline" className="flex-1" onClick={() => { setEditing(row); setCreating(false); }}>
+                        <Pencil className="mr-2 h-3.5 w-3.5" /> Edit
+                      </Button>
+                    )}
+                    {canDelete && (
+                      <Button size="sm" variant="outline" className="flex-1 text-destructive hover:text-destructive" onClick={() => remove(row)}>
+                        <Trash2 className="mr-2 h-3.5 w-3.5" /> Delete
+                      </Button>
+                    )}
                   </div>
-                </td>
-              </tr>
+                )}
+              </div>
             ))}
-          </tbody>
-        </table>
-      </div>}
+          </div>
+        </>
+      )}
     </div>
   );
 }

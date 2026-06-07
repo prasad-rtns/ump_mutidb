@@ -21,6 +21,8 @@ export class UserController {
       status: req.query.status as UserFilter['status'],
       departmentId: req.query.departmentId as string,
       roleId: req.query.roleId as string,
+      companyId: req.query.companyId as string,
+      userCategory: req.query.userCategory as UserFilter['userCategory'],
       departmentFilter: req.query.departmentFilter as string,
       userFilter: req.query.userFilter as string,
     };

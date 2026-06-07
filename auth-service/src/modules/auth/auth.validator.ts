@@ -16,10 +16,12 @@ export const registerValidator = [
   body('firstName').trim().notEmpty().withMessage('First name is required').isLength({ max: 100 }),
   body('lastName').trim().notEmpty().withMessage('Last name is required').isLength({ max: 100 }),
   body('phone').optional().isMobilePhone('any').withMessage('Invalid phone number'),
+  body('avatar').optional({ nullable: true, checkFalsy: true }).isURL({ require_tld: false, protocols: ['http', 'https'] }).isLength({ max: 2048 }).withMessage('Invalid avatar URL'),
   body('roleId').notEmpty().isUUID().withMessage('Valid role ID required'),
   body('companyId').optional({ nullable: true, checkFalsy: true }).isUUID().withMessage('Valid company/utility ID required'),
   body('departmentId').notEmpty().isUUID().withMessage('Valid department ID required'),
   body('designationId').notEmpty().isUUID().withMessage('Valid designation ID required'),
+  body('userCategory').optional().isIn(['external', 'internal', 'admin']).withMessage('Invalid user category'),
 ];
 
 export const loginValidator = [

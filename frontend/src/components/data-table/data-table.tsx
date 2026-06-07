@@ -77,9 +77,9 @@ export function DataTable<T extends Record<string, unknown>>({
   return (
     <div className="space-y-4">
       {/* Toolbar */}
-      <div className="flex items-center justify-between gap-2 flex-wrap">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         {onSearch && (
-          <div className="relative w-64">
+          <div className="relative w-full sm:w-64">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               className="pl-8"
@@ -90,7 +90,7 @@ export function DataTable<T extends Record<string, unknown>>({
           </div>
         )}
         {canCreate && (
-          <Button size="sm" onClick={() => { setShowCreate(true); setEditRow(null); }}>
+          <Button size="sm" className="w-full sm:w-auto" onClick={() => { setShowCreate(true); setEditRow(null); }}>
             <Plus className="mr-1 h-4 w-4" /> Add {meta.label}
           </Button>
         )}
@@ -115,7 +115,7 @@ export function DataTable<T extends Record<string, unknown>>({
       )}
 
       {/* Table */}
-      <div className="rounded-lg border overflow-x-auto">
+      <div className="hidden rounded-lg border overflow-x-auto md:block">
         <table className="w-full text-sm">
           <thead className="bg-muted/50">
             <tr>
@@ -157,11 +157,50 @@ export function DataTable<T extends Record<string, unknown>>({
         </table>
       </div>
 
+      <div className="space-y-3 md:hidden">
+        {isLoading && (
+          <div className="rounded-md border bg-card py-8 text-center">
+            <Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" />
+          </div>
+        )}
+        {!isLoading && data.length === 0 && (
+          <div className="rounded-md border bg-card px-4 py-8 text-center text-sm text-muted-foreground">
+            No records found.
+          </div>
+        )}
+        {!isLoading && data.map((row, i) => (
+          <div key={String(row[idField]) || i} className="rounded-md border bg-card p-4">
+            <div className="space-y-3">
+              {columns.map((c) => (
+                <div key={c} className="grid grid-cols-[7rem_1fr] gap-3 text-sm">
+                  <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{colLabel(c)}</span>
+                  <div className="min-w-0 break-words">{renderCell(row[c])}</div>
+                </div>
+              ))}
+            </div>
+            {(canUpdate || canDelete) && (
+              <div className="mt-4 flex gap-2 border-t pt-3">
+                {canUpdate && (
+                  <Button size="sm" variant="outline" className="flex-1" onClick={() => { setEditRow(row); setShowCreate(false); }}>
+                    <Pencil className="mr-2 h-3.5 w-3.5" /> Edit
+                  </Button>
+                )}
+                {canDelete && (
+                  <Button size="sm" variant="outline" className="flex-1 text-destructive hover:text-destructive" onClick={() => handleDelete(row)}>
+                    <Trash2 className="mr-2 h-3.5 w-3.5" /> Delete
+                  </Button>
+                )}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-between text-sm text-muted-foreground">
+        <div className="flex flex-col gap-3 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
           <span>{total} total records</span>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center justify-between gap-2 sm:justify-end">
             <Button size="sm" variant="outline" disabled={page === 1} onClick={() => onPageChange(page - 1)}>Prev</Button>
             <span>{page} / {totalPages}</span>
             <Button size="sm" variant="outline" disabled={page === totalPages} onClick={() => onPageChange(page + 1)}>Next</Button>

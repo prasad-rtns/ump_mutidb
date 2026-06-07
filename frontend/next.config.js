@@ -15,6 +15,7 @@ const nextConfig = {
     const masterUrl = process.env.MASTER_SERVICE_URL || 'http://localhost:3002/api/v1';
     const documentUrl = process.env.DOCUMENT_SERVICE_URL || 'http://localhost:3003/api/v1';
     return [
+      { source: '/proxy/document-uploads/:path*', destination: `${documentUrl.replace(/\/api\/v1\/?$/, '')}/uploads/:path*` },
       { source: '/proxy/auth/:path*',   destination: `${authUrl}/:path*`   },
       { source: '/proxy/master/:path*', destination: `${masterUrl}/:path*` },
       { source: '/proxy/documents/:path*', destination: `${documentUrl}/:path*` },

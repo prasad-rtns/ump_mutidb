@@ -103,9 +103,9 @@ export function DynamicForm({ fields, defaultValues = {}, onSubmit, isLoading, s
         ))}
       </div>
 
-      <div className="flex items-center justify-end gap-2 pt-2 border-t">
-        {onCancel && <Button type="button" variant="outline" onClick={onCancel}>Cancel</Button>}
-        <Button type="submit" disabled={isLoading}>
+      <div className="flex flex-col-reverse gap-2 pt-2 border-t sm:flex-row sm:items-center sm:justify-end">
+        {onCancel && <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={onCancel}>Cancel</Button>}
+        <Button type="submit" className="w-full sm:w-auto" disabled={isLoading}>
           {isLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving…</> : submitLabel}
         </Button>
       </div>

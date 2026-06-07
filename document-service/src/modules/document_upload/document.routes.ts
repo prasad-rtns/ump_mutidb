@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { asyncHandler } from '@prasad-rtns/shared';
 import { DocumentController } from './document.controller';
-import { uploadMiddleware, multerErrorHandler, virusScan } from '../../middleware/upload.middleware';
+import { uploadMiddleware, multerErrorHandler, validateProfilePhoto, virusScan } from '../../middleware/upload.middleware';
 import { authenticate, authorize } from '../../middleware/auth.middleware';
 
 const router = Router();
@@ -12,6 +12,16 @@ router.post(
   uploadMiddleware.single('file'),
   virusScan,
   asyncHandler(DocumentController.uploadSingle),
+  multerErrorHandler
+);
+
+router.post(
+  '/upload/profile-photo',
+  authenticate,
+  uploadMiddleware.single('file'),
+  validateProfilePhoto,
+  virusScan,
+  asyncHandler(DocumentController.uploadProfilePhoto),
   multerErrorHandler
 );
 

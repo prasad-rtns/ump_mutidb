@@ -15,6 +15,14 @@ export interface UploadResult {
   originalName: string;
 }
 
+function safeFolder(folder: string): string {
+  return folder
+    .split(/[\\/]+/)
+    .map((part) => part.replace(/[^a-zA-Z0-9._-]/g, '').replace(/^\.+$/, ''))
+    .filter(Boolean)
+    .join('/') || 'uploads';
+}
+
 // ─── S3 Provider ─────────────────────────────────────────────────────────────
 export class S3Provider {
   private client: S3Client;
@@ -35,7 +43,7 @@ export class S3Provider {
 
   async upload(file: Express.Multer.File, folder = 'uploads'): Promise<UploadResult> {
     const ext = path.extname(file.originalname);
-    const key = `${folder}/${Date.now()}-${Math.random().toString(36).substring(2)}${ext}`;
+    const key = `${safeFolder(folder)}/${Date.now()}-${Math.random().toString(36).substring(2)}${ext}`;
 
     await this.client.send(new PutObjectCommand({
       Bucket: this.bucket,
@@ -76,7 +84,7 @@ export class CloudinaryProvider {
   async upload(file: Express.Multer.File, folder = 'ump-documents'): Promise<UploadResult> {
     const result = await new Promise<import('cloudinary').UploadApiResponse>((resolve, reject) => {
       cloudinary.uploader.upload_stream(
-        { folder, resource_type: 'auto', use_filename: true, unique_filename: true },
+        { folder: safeFolder(folder), resource_type: 'auto', use_filename: true, unique_filename: true },
         (error, result) => { if (error) reject(error); else resolve(result!); }
       ).end(file.buffer);
     });
@@ -113,13 +121,14 @@ export class LocalProvider {
   }
 
   async upload(file: Express.Multer.File, folder = 'general'): Promise<UploadResult> {
-    const folderPath = path.join(this.uploadDir, folder);
+    const safeUploadFolder = safeFolder(folder);
+    const folderPath = path.join(this.uploadDir, safeUploadFolder);
     if (!fs.existsSync(folderPath)) fs.mkdirSync(folderPath, { recursive: true });
 
     const ext = path.extname(file.originalname);
     const filename = `${Date.now()}-${Math.random().toString(36).substring(2)}${ext}`;
     const filepath = path.join(folderPath, filename);
-    const key = `${folder}/${filename}`;
+    const key = `${safeUploadFolder}/${filename}`;
 
     fs.writeFileSync(filepath, file.buffer);
 

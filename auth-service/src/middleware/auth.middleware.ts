@@ -139,6 +139,33 @@ export const requireAnyPermission = (...required: string[]) => {
   };
 };
 
+export const selfOrAnyPermission = (...required: string[]) => {
+  return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    if (!req.user) {
+      ResponseUtil.unauthorized(res);
+      return;
+    }
+
+    const targetId = req.params.userId || req.params.id;
+    if (req.user.sub === targetId || isElevatedRole(req.user.role)) {
+      next();
+      return;
+    }
+
+    const dal = await DALFactory.get(dbType(req));
+    const user = await dal.user.findByIdWithRelations(req.user.sub);
+    const permissions = permissionList(user?.role?.permissions);
+    const allowed = required.some((needed) => permissions.some((actual) => permissionMatches(actual, needed)));
+
+    if (!allowed) {
+      ResponseUtil.forbidden(res, `Access denied. Required permissions: ${required.join(', ')}`);
+      return;
+    }
+
+    next();
+  };
+};
+
 export const selfOrAdmin = (req: Request, res: Response, next: NextFunction) => {
   if (!req.user) {
     ResponseUtil.unauthorized(res);
