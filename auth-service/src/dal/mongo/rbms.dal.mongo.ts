@@ -69,6 +69,7 @@ export class MongoModuleMenuDAL implements IModuleMenuDAL {
       id: uuidv4(),
       ...data,
       parentId: data.parentId || undefined,
+      moduleType: data.moduleType ?? 'admin',
       sortOrder: data.sortOrder ?? 0,
       permissions: data.permissions ?? [],
       isActive: true,

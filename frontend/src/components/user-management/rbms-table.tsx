@@ -2,7 +2,7 @@
 import type React from 'react';
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Check, ChevronDown, ChevronRight, Loader2, LockKeyhole, Pencil, Plus, Search, ShieldCheck, Trash2 } from 'lucide-react';
+import { Check, ChevronDown, ChevronRight, Loader2, LockKeyhole, Pencil, Plus, Search, ShieldCheck, Trash2, X } from 'lucide-react';
 import { authApi, apiErrorMessage } from '@/lib/api';
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
@@ -71,11 +71,40 @@ function fieldDefault(row: Record<string, unknown> | null, field: RbmsField) {
   return value ?? '';
 }
 
-function permissionLabel(permission: string) {
-  const [, action = permission] = permission.split(':');
-  return action
-    .replace(/[_-]+/g, ' ')
-    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+function permissionAction(permission: string) {
+  return permission.split(':')[1] ?? permission;
+}
+
+function permissionResource(permission: string) {
+  return permission.split(':')[0] ?? permission;
+}
+
+function groupKeyForModule(module: IModuleMenu, moduleById: Map<string, IModuleMenu>) {
+  const parent = module.parentId ? moduleById.get(module.parentId) : undefined;
+  return parent?.code ?? module.code ?? 'other';
+}
+
+function groupLabel(groupKey: string, modules: IModuleMenu[], moduleByCode: Map<string, IModuleMenu>, t: ReturnType<typeof useTranslation>['t']) {
+  const module = moduleByCode.get(groupKey) ?? modules.find((item) => item.code === groupKey);
+  if (module) return translatedModuleName(module, t);
+  return groupKey.replace(/[-_]+/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function actionLabel(action: string, t: ReturnType<typeof useTranslation>['t']) {
+  const normalized = action.toLowerCase();
+  if (normalized === 'read') return t('rbms.actions.read');
+  if (normalized === 'create') return t('rbms.actions.create');
+  if (normalized === 'update') return t('rbms.actions.update');
+  if (normalized === 'delete') return t('rbms.actions.delete');
+  if (normalized === '*') return t('rbms.actions.all');
+  return normalized.replace(/[-_]+/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function moduleTypeLabel(type: string, t: ReturnType<typeof useTranslation>['t']) {
+  if (type === 'admin') return t('rbms.moduleTypes.admin');
+  if (type === 'internal') return t('rbms.moduleTypes.internal');
+  if (type === 'external') return t('rbms.moduleTypes.external');
+  return t('rbms.moduleTypes.all');
 }
 
 function PermissionSelector({
@@ -86,7 +115,9 @@ function PermissionSelector({
   onChange: (value: string[]) => void;
 }) {
   const { t } = useTranslation();
-  const [utility, setUtility] = useState('all');
+  const [group, setGroup] = useState('all');
+  const [moduleType, setModuleType] = useState<'all' | 'admin' | 'internal' | 'external'>('all');
+  const [query, setQuery] = useState('');
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const selected = useMemo(() => new Set(value), [value]);
 
@@ -101,16 +132,76 @@ function PermissionSelector({
       .filter((module) => module.isActive !== false && (module.permissions?.length ?? 0) > 0),
     [modulesQuery.data, schemas],
   );
-  const utilityOptions = useMemo(() => {
-    const prefixes = modules
-      .map((module) => module.code.split('-')[0])
-      .filter(Boolean);
-    return ['all', ...Array.from(new Set(prefixes))];
-  }, [modules]);
-  const visibleModules = useMemo(
-    () => utility === 'all' ? modules : modules.filter((module) => module.code.startsWith(`${utility}-`) || module.code === utility),
-    [modules, utility],
+  const moduleById = useMemo(() => new Map(modules.map((module) => [module.id, module])), [modules]);
+  const moduleByCode = useMemo(() => new Map(modules.map((module) => [module.code, module])), [modules]);
+  const groupOptions = useMemo(() => {
+    const counts = new Map<string, { total: number; selected: number }>();
+    modules.forEach((module) => {
+      const key = groupKeyForModule(module, moduleById);
+      const current = counts.get(key) ?? { total: 0, selected: 0 };
+      current.total += 1;
+      if ((module.permissions ?? []).some((permission) => selected.has(permission))) current.selected += 1;
+      counts.set(key, current);
+    });
+    return Array.from(counts.entries())
+      .sort(([a], [b]) => groupLabel(a, modules, moduleByCode, t).localeCompare(groupLabel(b, modules, moduleByCode, t)))
+      .map(([key, counts]) => ({ key, label: groupLabel(key, modules, moduleByCode, t), ...counts }));
+  }, [moduleByCode, moduleById, modules, selected, t]);
+
+  const selectedModuleCount = useMemo(
+    () => modules.filter((module) => (module.permissions ?? []).some((permission) => selected.has(permission))).length,
+    [modules, selected],
   );
+
+  const moduleTypeOptions = useMemo(() => {
+    const base = [
+      { key: 'all' as const, count: modules.length },
+      { key: 'admin' as const, count: modules.filter((module) => (module.moduleType ?? 'admin') === 'admin').length },
+      { key: 'internal' as const, count: modules.filter((module) => (module.moduleType ?? 'admin') === 'internal').length },
+      { key: 'external' as const, count: modules.filter((module) => (module.moduleType ?? 'admin') === 'external').length },
+    ];
+    return base;
+  }, [modules]);
+
+  const filteredModules = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    return modules.filter((module) => {
+      if (moduleType !== 'all' && (module.moduleType ?? 'admin') !== moduleType) return false;
+      const moduleGroup = groupKeyForModule(module, moduleById);
+      const hasSelection = (module.permissions ?? []).some((permission) => selected.has(permission));
+      const groupMatch = group === 'all' || group === moduleGroup || (group === 'selected' && hasSelection);
+      if (!groupMatch) return false;
+      if (!needle) return true;
+      const label = translatedModuleName(module, t).toLowerCase();
+      const route = String(module.route ?? '').toLowerCase();
+      const code = module.code.toLowerCase();
+      return label.includes(needle) || code.includes(needle) || route.includes(needle) || (module.permissions ?? []).some((permission) => permission.toLowerCase().includes(needle));
+    });
+  }, [group, moduleById, moduleType, modules, query, selected, t]);
+
+  const visibleModules = useMemo(
+    () => filteredModules.sort((a, b) => {
+      const groupA = groupLabel(groupKeyForModule(a, moduleById), modules, moduleByCode, t);
+      const groupB = groupLabel(groupKeyForModule(b, moduleById), modules, moduleByCode, t);
+      return groupA.localeCompare(groupB) || translatedModuleName(a, t).localeCompare(translatedModuleName(b, t));
+    }),
+    [filteredModules, moduleByCode, moduleById, modules, t],
+  );
+  const visiblePermissions = useMemo(
+    () => permissionListForModules(visibleModules),
+    [visibleModules],
+  );
+  const visibleSelectedCount = visiblePermissions.filter((permission) => selected.has(permission)).length;
+  const visibleComplete = visiblePermissions.length > 0 && visiblePermissions.every((permission) => selected.has(permission));
+
+  const actionColumns = useMemo(() => {
+    const preferred = ['read', 'create', 'update', 'delete'];
+    const actions = Array.from(new Set(visibleModules.flatMap((module) => (module.permissions ?? []).map(permissionAction))));
+    return [
+      ...preferred.filter((action) => actions.includes(action)),
+      ...actions.filter((action) => !preferred.includes(action)).sort(),
+    ];
+  }, [visibleModules]);
   const allPermissions = useMemo(
     () => permissionListForModules(modules),
     [modules],
@@ -140,9 +231,30 @@ function PermissionSelector({
     setPermissions(next);
   }
 
+  function applyVisiblePermissions(mode: 'all' | 'read' | 'clear') {
+    const next = new Set(selected);
+    if (mode === 'clear') {
+      visiblePermissions.forEach((permission) => next.delete(permission));
+    } else if (mode === 'read') {
+      visiblePermissions.forEach((permission) => next.delete(permission));
+      visibleModules.forEach((module) => {
+        (module.permissions ?? [])
+          .filter((permission) => permissionAction(permission) === 'read')
+          .forEach((permission) => next.add(permission));
+      });
+    } else {
+      visiblePermissions.forEach((permission) => next.add(permission));
+    }
+    setPermissions(next);
+  }
+
+  function clearAll() {
+    onChange([]);
+  }
+
   return (
-    <div className="space-y-3 rounded-md border bg-muted/20 p-3">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+    <div className="space-y-4 rounded-lg border bg-muted/20 p-3 sm:p-4">
+      <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
         <div>
           <div className="flex items-center gap-2 text-sm font-semibold">
             <ShieldCheck className="h-4 w-4 text-primary" />
@@ -154,6 +266,13 @@ function PermissionSelector({
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Badge variant="secondary">{t('rbms.selected', { count: selectedCount })}</Badge>
+          <Badge variant="outline">{t('rbms.modulesSelected', { selected: selectedModuleCount, total: modules.length })}</Badge>
+          {selectedCount > 0 && (
+            <Button type="button" size="sm" variant="outline" onClick={clearAll}>
+              <X className="me-2 h-4 w-4" />
+              {t('rbms.clearAll')}
+            </Button>
+          )}
           <Button
             type="button"
             size="sm"
@@ -168,90 +287,173 @@ function PermissionSelector({
       </div>
 
       <div className="flex flex-wrap gap-2">
-        {utilityOptions.map((option) => (
+        {moduleTypeOptions.map((option) => (
           <Button
-            key={option}
+            key={option.key}
             type="button"
             size="sm"
-            variant={utility === option ? 'default' : 'outline'}
-            onClick={() => setUtility(option)}
-            className="capitalize"
+            variant={moduleType === option.key ? 'default' : 'outline'}
+            onClick={() => setModuleType(option.key)}
           >
-            {option === 'all' ? t('rbms.allModules') : option}
+            {moduleTypeLabel(option.key, t)}
+            <Badge className="ms-2" variant={moduleType === option.key ? 'secondary' : 'outline'}>{option.count}</Badge>
           </Button>
         ))}
       </div>
 
-      {modulesQuery.isLoading || schemasLoading ? (
-        <div className="flex items-center justify-center rounded-md border bg-background py-8 text-sm text-muted-foreground">
-          <Loader2 className="me-2 h-4 w-4 animate-spin" />
-          {t('rbms.loadingModules')}
-        </div>
-      ) : visibleModules.length === 0 ? (
-        <div className="rounded-md border bg-background px-3 py-6 text-center text-sm text-muted-foreground">
-          {t('rbms.noModulePermissions')}
-        </div>
-      ) : (
+      <div className="grid gap-2 lg:grid-cols-[minmax(14rem,18rem)_1fr]">
         <div className="space-y-2">
-          {visibleModules.map((module) => {
-            const modulePermissions = module.permissions ?? [];
-            const moduleSelected = modulePermissions.filter((permission) => selected.has(permission)).length;
-            const isExpanded = expanded[module.id] ?? moduleSelected > 0;
-            const moduleComplete = moduleSelected === modulePermissions.length;
-            const moduleLabel = translatedModuleName(module, t);
-            return (
-              <div key={module.id} className="rounded-md border bg-background">
-                <div className="flex flex-col gap-3 p-3 sm:flex-row sm:items-center sm:justify-between">
-                  <button
-                    type="button"
-                    className="flex min-w-0 flex-1 items-center gap-2 text-start"
-                    onClick={() => setExpanded((current) => ({ ...current, [module.id]: !isExpanded }))}
-                  >
-                    {isExpanded ? <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />}
-                    <span className="min-w-0">
-                      <span className="block truncate text-sm font-medium">{moduleLabel}</span>
-                      <span className="block truncate text-xs text-muted-foreground">{module.code} - {module.route}</span>
-                    </span>
-                  </button>
-                  <div className="flex flex-wrap items-center gap-2 sm:flex-nowrap">
-                    <Badge variant={moduleComplete ? 'success' : moduleSelected > 0 ? 'secondary' : 'outline'}>
-                      {moduleSelected}/{modulePermissions.length}
-                    </Badge>
-                    <Button type="button" size="sm" variant={moduleComplete ? 'default' : 'outline'} className="flex-1 sm:flex-none" onClick={() => toggleModule(module)}>
-                      <Check className="me-2 h-4 w-4" />
-                      {moduleComplete ? t('rbms.clearModule') : t('rbms.allowModule')}
-                    </Button>
-                  </div>
-                </div>
-
-                {isExpanded && (
-                  <div className="flex flex-wrap gap-2 border-t p-3">
-                    {modulePermissions.map((permission) => {
-                      const active = selected.has(permission);
-                      return (
-                        <button
-                          key={permission}
-                          type="button"
-                          className={[
-                            'inline-flex h-8 items-center rounded-md border px-3 text-xs font-medium transition-colors',
-                            active
-                              ? 'border-primary bg-primary text-primary-foreground'
-                              : 'border-input bg-background text-muted-foreground hover:bg-accent hover:text-accent-foreground',
-                          ].join(' ')}
-                          onClick={() => togglePermission(permission)}
-                        >
-                          {active && <Check className="me-1.5 h-3.5 w-3.5" />}
-                          {permissionLabel(permission)}
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            );
-          })}
+          <div className="relative">
+            <Search className="absolute start-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              className="h-9 ps-8"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder={t('rbms.searchPermissions')}
+            />
+          </div>
+          <div className="max-h-72 space-y-1 overflow-y-auto rounded-md border bg-background p-1">
+            <button
+              type="button"
+              className={[
+                'flex w-full items-center justify-between rounded px-2.5 py-2 text-sm transition-colors',
+                group === 'all' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted',
+              ].join(' ')}
+              onClick={() => setGroup('all')}
+            >
+              <span>{t('rbms.allModules')}</span>
+              <Badge variant={group === 'all' ? 'secondary' : 'outline'}>{modules.length}</Badge>
+            </button>
+            <button
+              type="button"
+              className={[
+                'flex w-full items-center justify-between rounded px-2.5 py-2 text-sm transition-colors',
+                group === 'selected' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted',
+              ].join(' ')}
+              onClick={() => setGroup('selected')}
+            >
+              <span>{t('rbms.selectedModules')}</span>
+              <Badge variant={group === 'selected' ? 'secondary' : 'outline'}>{selectedModuleCount}</Badge>
+            </button>
+            {groupOptions.map((option) => (
+              <button
+                key={option.key}
+                type="button"
+                className={[
+                  'flex w-full items-center justify-between gap-2 rounded px-2.5 py-2 text-start text-sm transition-colors',
+                  group === option.key ? 'bg-primary text-primary-foreground' : 'hover:bg-muted',
+                ].join(' ')}
+                onClick={() => setGroup(option.key)}
+              >
+                <span className="min-w-0 truncate">{option.label}</span>
+                <span className="shrink-0 text-xs opacity-80">{option.selected}/{option.total}</span>
+              </button>
+            ))}
+          </div>
         </div>
-      )}
+
+        <div className="space-y-2">
+          <div className="flex flex-col gap-2 rounded-md border bg-background p-2 sm:flex-row sm:items-center sm:justify-between">
+            <div className="text-sm text-muted-foreground">
+              <span className="font-medium text-foreground">{visibleModules.length}</span> {t('rbms.modulesShown')}
+              <span className="mx-2">/</span>
+              <span className="font-medium text-foreground">{visibleSelectedCount}</span> {t('rbms.permissionsInView')}
+            </div>
+            <div className="grid grid-cols-1 gap-2 sm:flex sm:flex-wrap">
+              <Button type="button" size="sm" variant={visibleComplete ? 'default' : 'outline'} onClick={() => applyVisiblePermissions('all')} disabled={visiblePermissions.length === 0}>
+                <Check className="me-2 h-4 w-4" />
+                {t('rbms.allowVisible')}
+              </Button>
+              <Button type="button" size="sm" variant="outline" onClick={() => applyVisiblePermissions('read')} disabled={visiblePermissions.length === 0}>
+                {t('rbms.readOnlyVisible')}
+              </Button>
+              <Button type="button" size="sm" variant="outline" onClick={() => applyVisiblePermissions('clear')} disabled={visiblePermissions.length === 0}>
+                {t('rbms.clearVisible')}
+              </Button>
+            </div>
+          </div>
+
+          {modulesQuery.isLoading || schemasLoading ? (
+            <div className="flex items-center justify-center rounded-md border bg-background py-8 text-sm text-muted-foreground">
+              <Loader2 className="me-2 h-4 w-4 animate-spin" />
+              {t('rbms.loadingModules')}
+            </div>
+          ) : visibleModules.length === 0 ? (
+            <div className="rounded-md border bg-background px-3 py-10 text-center text-sm text-muted-foreground">
+              {t('rbms.noModulePermissions')}
+            </div>
+          ) : (
+            <div className="max-h-[34rem] space-y-2 overflow-y-auto pe-1">
+              {visibleModules.map((module) => {
+                const modulePermissions = module.permissions ?? [];
+                const moduleSelected = modulePermissions.filter((permission) => selected.has(permission)).length;
+                const isExpanded = expanded[module.id] ?? moduleSelected > 0;
+                const moduleComplete = moduleSelected === modulePermissions.length;
+                const moduleLabel = translatedModuleName(module, t);
+                const resource = permissionResource(modulePermissions[0] ?? module.code);
+                return (
+                  <div key={module.id} className="rounded-md border bg-background">
+                    <div className="flex flex-col gap-3 p-3 sm:flex-row sm:items-center sm:justify-between">
+                      <button
+                        type="button"
+                        className="flex min-w-0 flex-1 items-center gap-2 text-start"
+                        onClick={() => setExpanded((current) => ({ ...current, [module.id]: !isExpanded }))}
+                      >
+                        {isExpanded ? <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />}
+                        <span className="min-w-0">
+                          <span className="block truncate text-sm font-medium">{moduleLabel}</span>
+                          <span className="block truncate text-xs text-muted-foreground">{resource} - {module.route}</span>
+                        </span>
+                      </button>
+                      <div className="flex flex-wrap items-center gap-2 sm:flex-nowrap">
+                        <Badge variant={moduleComplete ? 'success' : moduleSelected > 0 ? 'secondary' : 'outline'}>
+                          {moduleSelected}/{modulePermissions.length}
+                        </Badge>
+                        <Button type="button" size="sm" variant={moduleComplete ? 'default' : 'outline'} className="flex-1 sm:flex-none" onClick={() => toggleModule(module)}>
+                          <Check className="me-2 h-4 w-4" />
+                          {moduleComplete ? t('rbms.clearModule') : t('rbms.allowModule')}
+                        </Button>
+                      </div>
+                    </div>
+
+                    {isExpanded && (
+                      <div className="grid gap-2 border-t p-3 sm:grid-cols-2 xl:grid-cols-4">
+                        {actionColumns.map((action) => {
+                          const permission = modulePermissions.find((item) => permissionAction(item) === action);
+                          if (!permission) {
+                            return (
+                              <div key={action} className="h-9 rounded-md border border-dashed bg-muted/30 px-3 py-2 text-center text-xs text-muted-foreground">
+                                {actionLabel(action, t)}
+                              </div>
+                            );
+                          }
+                          const active = selected.has(permission);
+                          return (
+                            <button
+                              key={permission}
+                              type="button"
+                              className={[
+                                'inline-flex h-9 items-center justify-center rounded-md border px-3 text-sm font-medium transition-colors',
+                                active
+                                  ? 'border-primary bg-primary text-primary-foreground'
+                                  : 'border-input bg-background text-muted-foreground hover:bg-accent hover:text-accent-foreground',
+                              ].join(' ')}
+                              onClick={() => togglePermission(permission)}
+                            >
+                              {active && <Check className="me-1.5 h-3.5 w-3.5" />}
+                              {actionLabel(action, t)}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
 
       {value.length > 0 && (
         <div className="flex flex-wrap gap-1.5 border-t pt-3">

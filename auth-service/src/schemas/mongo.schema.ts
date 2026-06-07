@@ -97,6 +97,7 @@ export interface MongoModuleMenu {
   route?: string;
   icon?: string;
   parentId?: string;
+  moduleType: 'admin' | 'internal' | 'external';
   sortOrder: number;
   permissions: string[];
   isActive: boolean;
@@ -201,6 +202,7 @@ export class MongoCollections {
     await this.moduleMenus.createIndexes([
       { key: { code: 1 }, unique: true },
       { key: { parentId: 1 } },
+      { key: { moduleType: 1 } },
       { key: { isActive: 1 } },
     ]);
 

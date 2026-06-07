@@ -110,6 +110,7 @@ CREATE TABLE module_menus (
   route        VARCHAR2(300),
   icon         VARCHAR2(100),
   parent_id    VARCHAR2(36),
+  module_type  VARCHAR2(20)  DEFAULT 'admin' NOT NULL CHECK (module_type IN ('admin', 'internal', 'external')),
   sort_order   NUMBER(6)     DEFAULT 0 NOT NULL,
   permissions  CLOB          DEFAULT '[]',
   is_active    NUMBER(1)     DEFAULT 1 NOT NULL,
@@ -155,7 +156,7 @@ INSERT INTO roles (name, slug, description, permissions, is_active)
 VALUES ('Administrator', 'admin', 'Full system access', '["*"]', 1);
 
 INSERT INTO roles (name, slug, description, permissions, is_active)
-VALUES ('Team Lead', 'lead', 'Department-scoped management', '["countries:read","dashboard:read","documents:*","master:read","users:read"]', 1);
+VALUES ('Team Lead', 'lead', 'Department-scoped management', '["countries:read","dashboard:read","documents:*","master:read","external-users:read"]', 1);
 
 INSERT INTO roles (name, slug, description, permissions, is_active)
 VALUES ('User', 'user', 'Standard access', '["read:self","write:self"]', 1);
@@ -205,7 +206,7 @@ INSERT INTO module_menus (id, name, code, route, icon, parent_id, sort_order, pe
 VALUES ('990e8400-e29b-41d4-a716-446655440118', 'Settings', 'settings', '/master/settings', 'Settings', '990e8400-e29b-41d4-a716-446655440102', 80, '["settings:read","settings:create","settings:update","settings:delete"]', 1);
 
 INSERT INTO module_menus (id, name, code, route, icon, parent_id, sort_order, permissions, is_active)
-VALUES ('990e8400-e29b-41d4-a716-446655440103', 'User Management', 'user-management', '#', 'ShieldCheck', NULL, 30, '["users:read"]', 1);
+VALUES ('990e8400-e29b-41d4-a716-446655440103', 'User Management', 'user-management', '#', 'ShieldCheck', NULL, 30, '["user-management:read"]', 1);
 
 INSERT INTO module_menus (id, name, code, route, icon, parent_id, sort_order, permissions, is_active)
 VALUES ('990e8400-e29b-41d4-a716-446655440121', 'Roles', 'roles', '/user-management/roles', 'ShieldCheck', '990e8400-e29b-41d4-a716-446655440103', 10, '["roles:read","roles:create","roles:update","roles:delete"]', 1);
@@ -223,10 +224,10 @@ INSERT INTO module_menus (id, name, code, route, icon, parent_id, sort_order, pe
 VALUES ('990e8400-e29b-41d4-a716-446655440125', 'Modules', 'modules', '/user-management/modules', 'MenuSquare', '990e8400-e29b-41d4-a716-446655440103', 50, '["modules:read","modules:create","modules:update","modules:delete"]', 1);
 
 INSERT INTO module_menus (id, name, code, route, icon, parent_id, sort_order, permissions, is_active)
-VALUES ('990e8400-e29b-41d4-a716-446655440126', 'External Users', 'external-users', '/users/external', 'Users', '990e8400-e29b-41d4-a716-446655440103', 60, '["users:read","users:create","users:update","users:delete"]', 1);
+VALUES ('990e8400-e29b-41d4-a716-446655440126', 'External Users', 'external-users', '/users/external', 'Users', '990e8400-e29b-41d4-a716-446655440103', 60, '["external-users:read","external-users:create","external-users:update","external-users:delete"]', 1);
 
 INSERT INTO module_menus (id, name, code, route, icon, parent_id, sort_order, permissions, is_active)
-VALUES ('990e8400-e29b-41d4-a716-446655440127', 'Internal Users', 'internal-users', '/users/internal', 'UserCheck', '990e8400-e29b-41d4-a716-446655440103', 70, '["users:read","users:create","users:update","users:delete"]', 1);
+VALUES ('990e8400-e29b-41d4-a716-446655440127', 'Internal Users', 'internal-users', '/users/internal', 'UserCheck', '990e8400-e29b-41d4-a716-446655440103', 70, '["internal-users:read","internal-users:create","internal-users:update","internal-users:delete"]', 1);
 
 INSERT INTO module_menus (id, name, code, route, icon, parent_id, sort_order, permissions, is_active)
 VALUES ('990e8400-e29b-41d4-a716-446655440128', 'Admin Users', 'admin-users', '/users/admin', 'UserCog', '990e8400-e29b-41d4-a716-446655440103', 80, '["admin-users:read","admin-users:create","admin-users:update","admin-users:delete"]', 1);

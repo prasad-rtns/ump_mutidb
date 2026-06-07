@@ -82,8 +82,8 @@
     "created": "{{name}} created",
     "updated": "{{name}} updated",
     "deleted": "{{name}} deleted",
-    "dash": "-"
-    ,"noneRoot": "None (root)",
+    "dash": "-",
+    "noneRoot": "None (root)",
     "manageName": "Manage {{name}}"
   },
   "dashboard": {
@@ -174,20 +174,42 @@
     "modulePermissions": "Module Permissions",
     "permissionHelp": "Select full access or choose actions per module.",
     "selected": "{{count}} selected",
+    "modulesSelected": "{{selected}}/{{total}} modules selected",
+    "selectedModules": "Selected modules",
+    "modulesShown": "modules shown",
+    "permissionsInView": "permissions in view",
     "fullAccess": "Full Access",
+    "clearAll": "Clear All",
+    "searchPermissions": "Search modules, routes, or permissions...",
     "allModules": "All Modules",
+    "allowVisible": "Allow Visible",
+    "readOnlyVisible": "Read Only",
+    "clearVisible": "Clear Visible",
     "loadingModules": "Loading modules...",
     "noModulePermissions": "No active module permissions found.",
     "more": "+{{count}} more",
     "clearModule": "Clear Module",
     "allowModule": "Allow Module",
+    "moduleTypes": {
+      "all": "All",
+      "admin": "Admin",
+      "internal": "Internal",
+      "external": "External"
+    },
     "newTitle": "New {{title}}",
     "editTitle": "Edit {{title}}",
     "searchTitle": "Search {{title}}...",
     "add": "Add",
     "saved": "{{title}} saved",
     "deactivated": "{{title}} deactivated",
-    "deactivateConfirm": "Deactivate this {{title}}?"
+    "deactivateConfirm": "Deactivate this {{title}}?",
+    "actions": {
+      "read": "Read",
+      "create": "Create",
+      "update": "Update",
+      "delete": "Delete",
+      "all": "All"
+    }
   },
   "userManagement": {
     "rolesTitle": "Role Management",
@@ -229,6 +251,7 @@
     "designationName": "Designation Name",
     "level": "Level",
     "moduleName": "Module Name",
+    "moduleType": "Module Type",
     "parentModule": "Parent Module",
     "department": "Department",
     "designation": "Designation",

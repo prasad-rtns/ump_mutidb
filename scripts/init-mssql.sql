@@ -138,6 +138,7 @@ BEGIN
     route NVARCHAR(300) NULL,
     icon NVARCHAR(100) NULL,
     parent_id NVARCHAR(36) NULL,
+    module_type NVARCHAR(20) NOT NULL DEFAULT N'admin' CHECK (module_type IN (N'admin', N'internal', N'external')),
     sort_order INT NOT NULL DEFAULT 0,
     permissions NVARCHAR(MAX) NOT NULL DEFAULT '[]',
     is_active BIT NOT NULL DEFAULT 1,
@@ -187,7 +188,7 @@ BEGIN
   INSERT INTO dbo.roles (id, name, slug, description, permissions, is_active, created_at, updated_at)
   VALUES
     (N'550e8400-e29b-41d4-a716-446655440001', N'Administrator', N'admin', N'Full system access', N'["users:*","master:*","documents:*","settings:*"]', 1, SYSUTCDATETIME(), SYSUTCDATETIME()),
-    (N'550e8400-e29b-41d4-a716-446655440002', N'Team Lead', N'lead', N'Department-scoped management', N'["countries:read","dashboard:read","documents:*","master:read","users:read"]', 1, SYSUTCDATETIME(), SYSUTCDATETIME()),
+    (N'550e8400-e29b-41d4-a716-446655440002', N'Team Lead', N'lead', N'Department-scoped management', N'["countries:read","dashboard:read","documents:*","master:read","external-users:read"]', 1, SYSUTCDATETIME(), SYSUTCDATETIME()),
     (N'550e8400-e29b-41d4-a716-446655440003', N'User', N'user', N'Standard access', N'["users:self","documents:own"]', 1, SYSUTCDATETIME(), SYSUTCDATETIME());
 END
 GO
@@ -238,14 +239,14 @@ BEGIN
     (N'990e8400-e29b-41d4-a716-446655440116', N'Document Types', N'document-types', N'/master/document-types', N'FileText', N'990e8400-e29b-41d4-a716-446655440102', 60, N'["document-types:read","document-types:create","document-types:update","document-types:delete"]', 1, SYSUTCDATETIME(), SYSUTCDATETIME()),
     (N'990e8400-e29b-41d4-a716-446655440117', N'Service Types', N'service-types', N'/master/service-types', N'Layers', N'990e8400-e29b-41d4-a716-446655440102', 70, N'["service-types:read","service-types:create","service-types:update","service-types:delete"]', 1, SYSUTCDATETIME(), SYSUTCDATETIME()),
     (N'990e8400-e29b-41d4-a716-446655440118', N'Settings', N'settings', N'/master/settings', N'Settings', N'990e8400-e29b-41d4-a716-446655440102', 80, N'["settings:read","settings:create","settings:update","settings:delete"]', 1, SYSUTCDATETIME(), SYSUTCDATETIME()),
-    (N'990e8400-e29b-41d4-a716-446655440103', N'User Management', N'user-management', N'#', N'ShieldCheck', NULL, 30, N'["users:read"]', 1, SYSUTCDATETIME(), SYSUTCDATETIME()),
+    (N'990e8400-e29b-41d4-a716-446655440103', N'User Management', N'user-management', N'#', N'ShieldCheck', NULL, 30, N'["user-management:read"]', 1, SYSUTCDATETIME(), SYSUTCDATETIME()),
     (N'990e8400-e29b-41d4-a716-446655440121', N'Roles', N'roles', N'/user-management/roles', N'ShieldCheck', N'990e8400-e29b-41d4-a716-446655440103', 10, N'["roles:read","roles:create","roles:update","roles:delete"]', 1, SYSUTCDATETIME(), SYSUTCDATETIME()),
     (N'990e8400-e29b-41d4-a716-446655440122', N'Company', N'companies', N'/user-management/companies', N'Building2', N'990e8400-e29b-41d4-a716-446655440103', 20, N'["companies:read","companies:create","companies:update","companies:delete"]', 1, SYSUTCDATETIME(), SYSUTCDATETIME()),
     (N'990e8400-e29b-41d4-a716-446655440123', N'Departments', N'departments', N'/user-management/departments', N'FolderTree', N'990e8400-e29b-41d4-a716-446655440103', 30, N'["departments:read","departments:create","departments:update","departments:delete"]', 1, SYSUTCDATETIME(), SYSUTCDATETIME()),
     (N'990e8400-e29b-41d4-a716-446655440124', N'Designations', N'designations', N'/user-management/designations', N'BadgeCheck', N'990e8400-e29b-41d4-a716-446655440103', 40, N'["designations:read","designations:create","designations:update","designations:delete"]', 1, SYSUTCDATETIME(), SYSUTCDATETIME()),
     (N'990e8400-e29b-41d4-a716-446655440125', N'Modules', N'modules', N'/user-management/modules', N'MenuSquare', N'990e8400-e29b-41d4-a716-446655440103', 50, N'["modules:read","modules:create","modules:update","modules:delete"]', 1, SYSUTCDATETIME(), SYSUTCDATETIME()),
-    (N'990e8400-e29b-41d4-a716-446655440126', N'External Users', N'external-users', N'/users/external', N'Users', N'990e8400-e29b-41d4-a716-446655440103', 60, N'["users:read","users:create","users:update","users:delete"]', 1, SYSUTCDATETIME(), SYSUTCDATETIME()),
-    (N'990e8400-e29b-41d4-a716-446655440127', N'Internal Users', N'internal-users', N'/users/internal', N'UserCheck', N'990e8400-e29b-41d4-a716-446655440103', 70, N'["users:read","users:create","users:update","users:delete"]', 1, SYSUTCDATETIME(), SYSUTCDATETIME()),
+    (N'990e8400-e29b-41d4-a716-446655440126', N'External Users', N'external-users', N'/users/external', N'Users', N'990e8400-e29b-41d4-a716-446655440103', 60, N'["external-users:read","external-users:create","external-users:update","external-users:delete"]', 1, SYSUTCDATETIME(), SYSUTCDATETIME()),
+    (N'990e8400-e29b-41d4-a716-446655440127', N'Internal Users', N'internal-users', N'/users/internal', N'UserCheck', N'990e8400-e29b-41d4-a716-446655440103', 70, N'["internal-users:read","internal-users:create","internal-users:update","internal-users:delete"]', 1, SYSUTCDATETIME(), SYSUTCDATETIME()),
     (N'990e8400-e29b-41d4-a716-446655440128', N'Admin Users', N'admin-users', N'/users/admin', N'UserCog', N'990e8400-e29b-41d4-a716-446655440103', 80, N'["admin-users:read","admin-users:create","admin-users:update","admin-users:delete"]', 1, SYSUTCDATETIME(), SYSUTCDATETIME());
 END
 GO

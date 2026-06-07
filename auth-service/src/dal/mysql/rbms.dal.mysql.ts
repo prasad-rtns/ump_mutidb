@@ -79,6 +79,7 @@ export class MysqlModuleMenuDAL implements IModuleMenuDAL {
       route: data.route,
       icon: data.icon ?? null,
       parentId: data.parentId || null,
+      moduleType: data.moduleType ?? 'admin',
       sortOrder: data.sortOrder ?? 0,
       permissions: data.permissions ?? [],
       isActive: true,

@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { asyncHandler } from '@prasad-rtns/shared';
 import { DocumentController } from './document.controller';
 import { uploadMiddleware, multerErrorHandler, validateProfilePhoto, virusScan } from '../../middleware/upload.middleware';
-import { authenticate, authorize } from '../../middleware/auth.middleware';
+import { authenticate, requireAnyPermission } from '../../middleware/auth.middleware';
 
 const router = Router();
 
@@ -34,7 +34,7 @@ router.post('/upload-bulk',
 router.get   ('/',             authenticate,                               asyncHandler(DocumentController.list));
 router.get   ('/:id',          authenticate,                               asyncHandler(DocumentController.getById));
 router.get   ('/:id/download', authenticate,                               asyncHandler(DocumentController.getDownloadUrl));
-router.patch ('/:id/status',   authenticate, authorize('admin', 'lead'),   asyncHandler(DocumentController.updateStatus));
+router.patch ('/:id/status',   authenticate, requireAnyPermission('documents:*', 'documents:update'), asyncHandler(DocumentController.updateStatus));
 router.delete('/:id',          authenticate,                               asyncHandler(DocumentController.remove));
 
 export default router;

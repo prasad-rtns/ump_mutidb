@@ -1,4 +1,5 @@
 export type UserRoleSlug  = string;
+export type ModuleType = 'admin' | 'internal' | 'external';
 
 export interface IRole {
   id: string;
@@ -53,6 +54,7 @@ export interface IModuleMenu {
   route: string;
   icon?: string | null;
   parentId?: string | null;
+  moduleType: ModuleType;
   sortOrder: number;
   permissions: string[];
   isActive: boolean;
@@ -129,6 +131,7 @@ export interface CreateModuleMenuDTO {
   route: string;
   icon?: string;
   parentId?: string | null;
+  moduleType?: ModuleType;
   sortOrder?: number;
   permissions?: string[];
 }
@@ -139,6 +142,7 @@ export interface UpdateModuleMenuDTO {
   route?: string;
   icon?: string | null;
   parentId?: string | null;
+  moduleType?: ModuleType;
   sortOrder?: number;
   permissions?: string[];
   isActive?: boolean;

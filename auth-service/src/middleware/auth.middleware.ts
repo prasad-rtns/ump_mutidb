@@ -113,6 +113,16 @@ const permissionMatches = (actual: string, required: string): boolean => {
 
 const isElevatedRole = (role?: string) => ['admin', 'super-admin', 'super_admin', 'super-user', 'super_user'].includes(role ?? '');
 
+const userCategoryPermissionPrefix = (category?: unknown): string | null => {
+  if (category === 'external') return 'external-users';
+  if (category === 'internal') return 'internal-users';
+  if (category === 'admin') return 'admin-users';
+  return null;
+};
+
+const hasAnyRequiredPermission = (permissions: string[], required: string[]) =>
+  required.some((needed) => permissions.some((actual) => permissionMatches(actual, needed)));
+
 export const requireAnyPermission = (...required: string[]) => {
   return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     if (!req.user) {
@@ -128,7 +138,7 @@ export const requireAnyPermission = (...required: string[]) => {
     const dal = await DALFactory.get(dbType(req));
     const user = await dal.user.findByIdWithRelations(req.user.sub);
     const permissions = permissionList(user?.role?.permissions);
-    const allowed = required.some((needed) => permissions.some((actual) => permissionMatches(actual, needed)));
+    const allowed = hasAnyRequiredPermission(permissions, required);
 
     if (!allowed) {
       ResponseUtil.forbidden(res, `Access denied. Required permissions: ${required.join(', ')}`);
@@ -155,7 +165,7 @@ export const selfOrAnyPermission = (...required: string[]) => {
     const dal = await DALFactory.get(dbType(req));
     const user = await dal.user.findByIdWithRelations(req.user.sub);
     const permissions = permissionList(user?.role?.permissions);
-    const allowed = required.some((needed) => permissions.some((actual) => permissionMatches(actual, needed)));
+    const allowed = hasAnyRequiredPermission(permissions, required);
 
     if (!allowed) {
       ResponseUtil.forbidden(res, `Access denied. Required permissions: ${required.join(', ')}`);
@@ -163,6 +173,59 @@ export const selfOrAnyPermission = (...required: string[]) => {
     }
 
     next();
+  };
+};
+
+export const requireUserCategoryPermission = (action: 'read' | 'create' | 'update' | 'delete') => {
+  return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    if (!req.user) {
+      ResponseUtil.unauthorized(res);
+      return;
+    }
+
+    if (isElevatedRole(req.user.role)) {
+      next();
+      return;
+    }
+
+    const dal = await DALFactory.get(dbType(req));
+    const actor = await dal.user.findByIdWithRelations(req.user.sub);
+    const permissions = permissionList(actor?.role?.permissions);
+
+    let category: unknown = req.query.userCategory ?? req.body.userCategory;
+    if (!category && req.params.id) {
+      const target = await dal.user.findById(req.params.id);
+      category = target?.userCategory;
+    }
+
+    const prefix = userCategoryPermissionPrefix(category);
+    const required = prefix
+      ? ['users:*', `${prefix}:*`, `${prefix}:${action}`]
+      : ['users:*'];
+
+    if (!hasAnyRequiredPermission(permissions, required)) {
+      ResponseUtil.forbidden(res, `Access denied. Required permissions: ${required.join(', ')}`);
+      return;
+    }
+
+    next();
+  };
+};
+
+export const selfOrUserCategoryPermission = (action: 'read' | 'update') => {
+  return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    if (!req.user) {
+      ResponseUtil.unauthorized(res);
+      return;
+    }
+
+    const targetId = req.params.userId || req.params.id;
+    if (req.user.sub === targetId || isElevatedRole(req.user.role)) {
+      next();
+      return;
+    }
+
+    return requireUserCategoryPermission(action)(req, res, next);
   };
 };
 

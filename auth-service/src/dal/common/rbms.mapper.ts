@@ -31,6 +31,7 @@ export const mapModuleRow = (row: Record<string, unknown>): IModuleMenu => ({
   route: (row.route ?? row.ROUTE ?? '') as string,
   icon: (row.icon ?? row.ICON ?? null) as string | null,
   parentId: (row.parentId ?? row.parent_id ?? row.PARENT_ID ?? null) as string | null,
+  moduleType: (row.moduleType ?? row.module_type ?? row.MODULE_TYPE ?? 'admin') as IModuleMenu['moduleType'],
   sortOrder: Number(row.sortOrder ?? row.sort_order ?? row.SORT_ORDER ?? 0),
   permissions: parsePermissions(row.permissions ?? row.PERMISSIONS),
   isActive: boolFromDb(row.isActive ?? row.is_active ?? row.IS_ACTIVE),

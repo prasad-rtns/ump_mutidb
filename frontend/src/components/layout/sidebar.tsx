@@ -133,7 +133,8 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
         return visible ? [visible] : [];
       });
       const selfVisible = (node.permissions?.length ?? 0) === 0 || canAny(node.permissions);
-      if (!selfVisible && visibleChildren.length === 0) return null;
+      const hasRoute = !!moduleRoute(node);
+      if ((!selfVisible && visibleChildren.length === 0) || (!hasRoute && visibleChildren.length === 0)) return null;
       return { ...node, children: visibleChildren };
     }
 

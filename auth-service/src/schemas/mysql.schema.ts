@@ -97,6 +97,7 @@ export const moduleMenus = mysqlTable('module_menus', {
   route: varchar('route', { length: 300 }).notNull(),
   icon: varchar('icon', { length: 100 }),
   parentId: varchar('parent_id', { length: 36 }),
+  moduleType: mysqlEnum('module_type', ['admin', 'internal', 'external']).default('admin').notNull(),
   sortOrder: int('sort_order').default(0).notNull(),
   permissions: json('permissions').$type<string[]>().default([]),
   isActive: boolean('is_active').default(true).notNull(),

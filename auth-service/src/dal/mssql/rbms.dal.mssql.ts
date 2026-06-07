@@ -53,17 +53,17 @@ export class MssqlModuleMenuDAL implements IModuleMenuDAL {
   constructor(private readonly pool: ConnectionPool) {}
 
   async findAll(activeOnly = true): Promise<IModuleMenu[]> {
-    const result = await this.pool.request().query(`SELECT id, name, code, route, icon, parent_id AS parentId, sort_order AS sortOrder, permissions, is_active AS isActive, created_at AS createdAt, updated_at AS updatedAt FROM dbo.module_menus ${activeOnly ? 'WHERE is_active = 1' : ''} ORDER BY sort_order, name`);
+    const result = await this.pool.request().query(`SELECT id, name, code, route, icon, parent_id AS parentId, module_type AS moduleType, sort_order AS sortOrder, permissions, is_active AS isActive, created_at AS createdAt, updated_at AS updatedAt FROM dbo.module_menus ${activeOnly ? 'WHERE is_active = 1' : ''} ORDER BY sort_order, name`);
     return result.recordset.map(mapModuleRow);
   }
 
   async findById(id: string): Promise<IModuleMenu | null> {
-    const result = await this.pool.request().input('id', id).query('SELECT id, name, code, route, icon, parent_id AS parentId, sort_order AS sortOrder, permissions, is_active AS isActive, created_at AS createdAt, updated_at AS updatedAt FROM dbo.module_menus WHERE id = @id');
+    const result = await this.pool.request().input('id', id).query('SELECT id, name, code, route, icon, parent_id AS parentId, module_type AS moduleType, sort_order AS sortOrder, permissions, is_active AS isActive, created_at AS createdAt, updated_at AS updatedAt FROM dbo.module_menus WHERE id = @id');
     return result.recordset[0] ? mapModuleRow(result.recordset[0]) : null;
   }
 
   async findByCode(code: string): Promise<IModuleMenu | null> {
-    const result = await this.pool.request().input('code', code).query('SELECT id, name, code, route, icon, parent_id AS parentId, sort_order AS sortOrder, permissions, is_active AS isActive, created_at AS createdAt, updated_at AS updatedAt FROM dbo.module_menus WHERE code = @code');
+    const result = await this.pool.request().input('code', code).query('SELECT id, name, code, route, icon, parent_id AS parentId, module_type AS moduleType, sort_order AS sortOrder, permissions, is_active AS isActive, created_at AS createdAt, updated_at AS updatedAt FROM dbo.module_menus WHERE code = @code');
     return result.recordset[0] ? mapModuleRow(result.recordset[0]) : null;
   }
 
@@ -72,15 +72,16 @@ export class MssqlModuleMenuDAL implements IModuleMenuDAL {
     await this.pool.request()
       .input('id', id).input('name', data.name).input('code', data.code).input('route', data.route)
       .input('icon', data.icon ?? null).input('parentId', data.parentId || null)
+      .input('moduleType', data.moduleType ?? 'admin')
       .input('sortOrder', data.sortOrder ?? 0).input('permissions', JSON.stringify(data.permissions ?? []))
-      .query('INSERT INTO dbo.module_menus (id, name, code, route, icon, parent_id, sort_order, permissions, is_active, created_at, updated_at) VALUES (@id, @name, @code, @route, @icon, @parentId, @sortOrder, @permissions, 1, GETUTCDATE(), GETUTCDATE())');
+      .query('INSERT INTO dbo.module_menus (id, name, code, route, icon, parent_id, module_type, sort_order, permissions, is_active, created_at, updated_at) VALUES (@id, @name, @code, @route, @icon, @parentId, @moduleType, @sortOrder, @permissions, 1, GETUTCDATE(), GETUTCDATE())');
     return (await this.findById(id))!;
   }
 
   async update(id: string, data: UpdateModuleMenuDTO): Promise<IModuleMenu | null> {
     const sets: string[] = ['updated_at = GETUTCDATE()'];
     const req = this.pool.request().input('id', id);
-    const fieldMap: Record<string, string> = { name: 'name', code: 'code', route: 'route', icon: 'icon', parentId: 'parent_id', sortOrder: 'sort_order' };
+    const fieldMap: Record<string, string> = { name: 'name', code: 'code', route: 'route', icon: 'icon', parentId: 'parent_id', moduleType: 'module_type', sortOrder: 'sort_order' };
     for (const [key, col] of Object.entries(fieldMap)) {
       if (key in data) { req.input(key, (data as Record<string, unknown>)[key]); sets.push(`${col} = @${key}`); }
     }

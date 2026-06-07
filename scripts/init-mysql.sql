@@ -111,6 +111,7 @@ CREATE TABLE IF NOT EXISTS module_menus (
     route VARCHAR(300) NOT NULL,
     icon VARCHAR(100),
     parent_id CHAR(36),
+    module_type ENUM('admin','internal','external') DEFAULT 'admin' NOT NULL,
     sort_order INT DEFAULT 0 NOT NULL,
     permissions JSON DEFAULT ('[]'),
     is_active TINYINT(1) DEFAULT 1 NOT NULL,
@@ -154,7 +155,7 @@ CREATE TABLE IF NOT EXISTS audit_logs (
 -- Seed roles
 INSERT IGNORE INTO roles (id, name, slug, description, permissions) VALUES
     ('550e8400-e29b-41d4-a716-446655440001', 'Administrator', 'admin', 'Full system access', '["users:*","master:*","documents:*","settings:*"]'),
-    ('550e8400-e29b-41d4-a716-446655440002', 'Team Lead', 'lead', 'Department-level access', '["countries:read","dashboard:read","documents:*","master:read","users:read"]'),
+    ('550e8400-e29b-41d4-a716-446655440002', 'Team Lead', 'lead', 'Department-level access', '["countries:read","dashboard:read","documents:*","master:read","external-users:read"]'),
     ('550e8400-e29b-41d4-a716-446655440003', 'User', 'user', 'Self-service access', '["users:self","documents:own"]');
 
 INSERT INTO company_or_utilities (id, name, code, type, description) VALUES
@@ -166,32 +167,33 @@ ON DUPLICATE KEY UPDATE
     is_active = 1,
     updated_at = CURRENT_TIMESTAMP;
 
-INSERT INTO module_menus (id, name, code, route, icon, parent_id, sort_order, permissions, is_active) VALUES
-    ('990e8400-e29b-41d4-a716-446655440101', 'Dashboard', 'dashboard', '/dashboard', 'LayoutDashboard', NULL, 10, '["dashboard:read"]', 1),
-    ('990e8400-e29b-41d4-a716-446655440102', 'Master Data', 'master-data', '#', 'Database', NULL, 20, '["master:read"]', 1),
-    ('990e8400-e29b-41d4-a716-446655440111', 'Country', 'countries', '/master/countries', 'Globe', '990e8400-e29b-41d4-a716-446655440102', 10, '["countries:read","countries:create","countries:update","countries:delete"]', 1),
-    ('990e8400-e29b-41d4-a716-446655440112', 'State', 'states', '/master/states', 'Map', '990e8400-e29b-41d4-a716-446655440102', 20, '["states:read","states:create","states:update","states:delete"]', 1),
-    ('990e8400-e29b-41d4-a716-446655440113', 'City', 'cities', '/master/cities', 'Building2', '990e8400-e29b-41d4-a716-446655440102', 30, '["cities:read","cities:create","cities:update","cities:delete"]', 1),
-    ('990e8400-e29b-41d4-a716-446655440114', 'Categories', 'categories', '/master/categories', 'Tag', '990e8400-e29b-41d4-a716-446655440102', 40, '["categories:read","categories:create","categories:update","categories:delete"]', 1),
-    ('990e8400-e29b-41d4-a716-446655440115', 'Tags', 'tags', '/master/tags', 'Hash', '990e8400-e29b-41d4-a716-446655440102', 50, '["tags:read","tags:create","tags:update","tags:delete"]', 1),
-    ('990e8400-e29b-41d4-a716-446655440116', 'Document Types', 'document-types', '/master/document-types', 'FileText', '990e8400-e29b-41d4-a716-446655440102', 60, '["document-types:read","document-types:create","document-types:update","document-types:delete"]', 1),
-    ('990e8400-e29b-41d4-a716-446655440117', 'Service Types', 'service-types', '/master/service-types', 'Layers', '990e8400-e29b-41d4-a716-446655440102', 70, '["service-types:read","service-types:create","service-types:update","service-types:delete"]', 1),
-    ('990e8400-e29b-41d4-a716-446655440118', 'Settings', 'settings', '/master/settings', 'Settings', '990e8400-e29b-41d4-a716-446655440102', 80, '["settings:read","settings:create","settings:update","settings:delete"]', 1),
-    ('990e8400-e29b-41d4-a716-446655440103', 'User Management', 'user-management', '#', 'ShieldCheck', NULL, 30, '["users:read"]', 1),
-    ('990e8400-e29b-41d4-a716-446655440121', 'Roles', 'roles', '/user-management/roles', 'ShieldCheck', '990e8400-e29b-41d4-a716-446655440103', 10, '["roles:read","roles:create","roles:update","roles:delete"]', 1),
-    ('990e8400-e29b-41d4-a716-446655440122', 'Company', 'companies', '/user-management/companies', 'Building2', '990e8400-e29b-41d4-a716-446655440103', 20, '["companies:read","companies:create","companies:update","companies:delete"]', 1),
-    ('990e8400-e29b-41d4-a716-446655440123', 'Departments', 'departments', '/user-management/departments', 'FolderTree', '990e8400-e29b-41d4-a716-446655440103', 30, '["departments:read","departments:create","departments:update","departments:delete"]', 1),
-    ('990e8400-e29b-41d4-a716-446655440124', 'Designations', 'designations', '/user-management/designations', 'BadgeCheck', '990e8400-e29b-41d4-a716-446655440103', 40, '["designations:read","designations:create","designations:update","designations:delete"]', 1),
-    ('990e8400-e29b-41d4-a716-446655440125', 'Modules', 'modules', '/user-management/modules', 'MenuSquare', '990e8400-e29b-41d4-a716-446655440103', 50, '["modules:read","modules:create","modules:update","modules:delete"]', 1),
-    ('990e8400-e29b-41d4-a716-446655440126', 'External Users', 'external-users', '/users/external', 'Users', '990e8400-e29b-41d4-a716-446655440103', 60, '["users:read","users:create","users:update","users:delete"]', 1),
-    ('990e8400-e29b-41d4-a716-446655440127', 'Internal Users', 'internal-users', '/users/internal', 'UserCheck', '990e8400-e29b-41d4-a716-446655440103', 70, '["users:read","users:create","users:update","users:delete"]', 1),
-    ('990e8400-e29b-41d4-a716-446655440128', 'Admin Users', 'admin-users', '/users/admin', 'UserCog', '990e8400-e29b-41d4-a716-446655440103', 80, '["admin-users:read","admin-users:create","admin-users:update","admin-users:delete"]', 1)
+INSERT INTO module_menus (id, name, code, route, icon, parent_id, module_type, sort_order, permissions, is_active) VALUES
+    ('990e8400-e29b-41d4-a716-446655440101', 'Dashboard', 'dashboard', '/dashboard', 'LayoutDashboard', NULL, 'admin', 10, '["dashboard:read"]', 1),
+    ('990e8400-e29b-41d4-a716-446655440102', 'Master Data', 'master-data', '#', 'Database', NULL, 'admin', 20, '["master:read"]', 1),
+    ('990e8400-e29b-41d4-a716-446655440111', 'Country', 'countries', '/master/countries', 'Globe', '990e8400-e29b-41d4-a716-446655440102', 'admin', 10, '["countries:read","countries:create","countries:update","countries:delete"]', 1),
+    ('990e8400-e29b-41d4-a716-446655440112', 'State', 'states', '/master/states', 'Map', '990e8400-e29b-41d4-a716-446655440102', 'admin', 20, '["states:read","states:create","states:update","states:delete"]', 1),
+    ('990e8400-e29b-41d4-a716-446655440113', 'City', 'cities', '/master/cities', 'Building2', '990e8400-e29b-41d4-a716-446655440102', 'admin', 30, '["cities:read","cities:create","cities:update","cities:delete"]', 1),
+    ('990e8400-e29b-41d4-a716-446655440114', 'Categories', 'categories', '/master/categories', 'Tag', '990e8400-e29b-41d4-a716-446655440102', 'admin', 40, '["categories:read","categories:create","categories:update","categories:delete"]', 1),
+    ('990e8400-e29b-41d4-a716-446655440115', 'Tags', 'tags', '/master/tags', 'Hash', '990e8400-e29b-41d4-a716-446655440102', 'admin', 50, '["tags:read","tags:create","tags:update","tags:delete"]', 1),
+    ('990e8400-e29b-41d4-a716-446655440116', 'Document Types', 'document-types', '/master/document-types', 'FileText', '990e8400-e29b-41d4-a716-446655440102', 'admin', 60, '["document-types:read","document-types:create","document-types:update","document-types:delete"]', 1),
+    ('990e8400-e29b-41d4-a716-446655440117', 'Service Types', 'service-types', '/master/service-types', 'Layers', '990e8400-e29b-41d4-a716-446655440102', 'admin', 70, '["service-types:read","service-types:create","service-types:update","service-types:delete"]', 1),
+    ('990e8400-e29b-41d4-a716-446655440118', 'Settings', 'settings', '/master/settings', 'Settings', '990e8400-e29b-41d4-a716-446655440102', 'admin', 80, '["settings:read","settings:create","settings:update","settings:delete"]', 1),
+    ('990e8400-e29b-41d4-a716-446655440103', 'User Management', 'user-management', '#', 'ShieldCheck', NULL, 'admin', 30, '["user-management:read"]', 1),
+    ('990e8400-e29b-41d4-a716-446655440121', 'Roles', 'roles', '/user-management/roles', 'ShieldCheck', '990e8400-e29b-41d4-a716-446655440103', 'admin', 10, '["roles:read","roles:create","roles:update","roles:delete"]', 1),
+    ('990e8400-e29b-41d4-a716-446655440122', 'Company', 'companies', '/user-management/companies', 'Building2', '990e8400-e29b-41d4-a716-446655440103', 'admin', 20, '["companies:read","companies:create","companies:update","companies:delete"]', 1),
+    ('990e8400-e29b-41d4-a716-446655440123', 'Departments', 'departments', '/user-management/departments', 'FolderTree', '990e8400-e29b-41d4-a716-446655440103', 'admin', 30, '["departments:read","departments:create","departments:update","departments:delete"]', 1),
+    ('990e8400-e29b-41d4-a716-446655440124', 'Designations', 'designations', '/user-management/designations', 'BadgeCheck', '990e8400-e29b-41d4-a716-446655440103', 'admin', 40, '["designations:read","designations:create","designations:update","designations:delete"]', 1),
+    ('990e8400-e29b-41d4-a716-446655440125', 'Modules', 'modules', '/user-management/modules', 'MenuSquare', '990e8400-e29b-41d4-a716-446655440103', 'admin', 50, '["modules:read","modules:create","modules:update","modules:delete"]', 1),
+    ('990e8400-e29b-41d4-a716-446655440126', 'External Users', 'external-users', '/users/external', 'Users', '990e8400-e29b-41d4-a716-446655440103', 'admin', 60, '["external-users:read","external-users:create","external-users:update","external-users:delete"]', 1),
+    ('990e8400-e29b-41d4-a716-446655440127', 'Internal Users', 'internal-users', '/users/internal', 'UserCheck', '990e8400-e29b-41d4-a716-446655440103', 'admin', 70, '["internal-users:read","internal-users:create","internal-users:update","internal-users:delete"]', 1),
+    ('990e8400-e29b-41d4-a716-446655440128', 'Admin Users', 'admin-users', '/users/admin', 'UserCog', '990e8400-e29b-41d4-a716-446655440103', 'admin', 80, '["admin-users:read","admin-users:create","admin-users:update","admin-users:delete"]', 1)
 ON DUPLICATE KEY UPDATE
     id = VALUES(id),
     name = VALUES(name),
     route = VALUES(route),
     icon = VALUES(icon),
     parent_id = VALUES(parent_id),
+    module_type = VALUES(module_type),
     sort_order = VALUES(sort_order),
     permissions = VALUES(permissions),
     is_active = VALUES(is_active),

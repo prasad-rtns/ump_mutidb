@@ -15,6 +15,7 @@ function virtualMasterParent(): IModuleMenu {
     route: '#',
     icon: 'database',
     parentId: null,
+    moduleType: 'admin',
     sortOrder: 20,
     permissions: ['master:read'],
     isActive: true,
@@ -29,16 +30,28 @@ function virtualMasterModule(entity: string, meta: EntityMeta, parentId: string,
     route: `/master/${entity}`,
     icon: meta.icon || 'layers',
     parentId,
+    moduleType: 'admin',
     sortOrder,
     permissions: masterEntityPermissions(entity),
     isActive: true,
   };
 }
 
-export function mergeModulesWithMasterSchema(modules: IModuleMenu[], schemas?: SchemaCatalogue): IModuleMenu[] {
-  if (!schemas) return modules;
+function scopedUserModulePermissions(module: IModuleMenu): IModuleMenu {
+  const normalized = { ...module, moduleType: module.moduleType ?? 'admin' };
+  if (normalized.code === 'user-management') return { ...normalized, permissions: ['user-management:read'] };
+  if (!['external-users', 'internal-users', 'admin-users'].includes(normalized.code)) return normalized;
+  return {
+    ...normalized,
+    permissions: [`${normalized.code}:read`, `${normalized.code}:create`, `${normalized.code}:update`, `${normalized.code}:delete`],
+  };
+}
 
-  const next = [...modules];
+export function mergeModulesWithMasterSchema(modules: IModuleMenu[], schemas?: SchemaCatalogue): IModuleMenu[] {
+  const normalizedModules = modules.map(scopedUserModulePermissions);
+  if (!schemas) return normalizedModules;
+
+  const next = [...normalizedModules];
   const codeSet = new Set(next.map((module) => module.code));
   let masterParent = next.find((module) => module.code === MASTER_PARENT_CODE || module.code === 'master');
 

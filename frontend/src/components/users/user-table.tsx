@@ -54,16 +54,16 @@ const PROFILE_PHOTO_MAX_BYTES = 2 * 1024 * 1024;
 
 const CATEGORY_PERMISSIONS: Record<UserCategory, { read: string[]; create: string[]; update: string[]; delete: string[] }> = {
   external: {
-    read: ['users:*', 'users:read', 'external-users:*', 'external-users:read'],
-    create: ['users:*', 'users:create', 'external-users:*', 'external-users:create'],
-    update: ['users:*', 'users:update', 'external-users:*', 'external-users:update'],
-    delete: ['users:*', 'users:delete', 'external-users:*', 'external-users:delete'],
+    read: ['users:*', 'external-users:*', 'external-users:read'],
+    create: ['users:*', 'external-users:*', 'external-users:create'],
+    update: ['users:*', 'external-users:*', 'external-users:update'],
+    delete: ['users:*', 'external-users:*', 'external-users:delete'],
   },
   internal: {
-    read: ['users:*', 'users:read', 'internal-users:*', 'internal-users:read'],
-    create: ['users:*', 'users:create', 'internal-users:*', 'internal-users:create'],
-    update: ['users:*', 'users:update', 'internal-users:*', 'internal-users:update'],
-    delete: ['users:*', 'users:delete', 'internal-users:*', 'internal-users:delete'],
+    read: ['users:*', 'internal-users:*', 'internal-users:read'],
+    create: ['users:*', 'internal-users:*', 'internal-users:create'],
+    update: ['users:*', 'internal-users:*', 'internal-users:update'],
+    delete: ['users:*', 'internal-users:*', 'internal-users:delete'],
   },
   admin: {
     read: ['users:*', 'admin-users:*', 'admin-users:read'],

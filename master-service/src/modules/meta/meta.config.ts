@@ -29,7 +29,7 @@ export const MASTER_SCHEMA: Record<string, EntityMeta> = {
   countries: {
     label: 'Country', pluralLabel: 'Countries', icon: 'globe', apiEndpoint: '/api/v1/master/countries', idField: 'id', searchable: true,
     listColumns: ['name', 'code', 'dialCode', 'currency', 'isActive'],
-    permissions: { create: ['super_admin', 'admin'], update: ['super_admin', 'admin'], delete: ['super_admin'] },
+    permissions: { create: ['countries:*', 'countries:create'], update: ['countries:*', 'countries:update'], delete: ['countries:*', 'countries:delete'] },
     fields: [
       { name: 'name',           label: 'Country Name',   type: 'text',    required: true, maxLength: 100 },
       { name: 'code',           label: 'ISO Code (3)',   type: 'text',    required: true, maxLength: 3,  placeholder: 'e.g. IND' },
@@ -43,7 +43,7 @@ export const MASTER_SCHEMA: Record<string, EntityMeta> = {
   states: {
     label: 'State', pluralLabel: 'States', icon: 'map', apiEndpoint: '/api/v1/master/states', idField: 'id', searchable: true,
     listColumns: ['name', 'code', 'countryId', 'isActive'],
-    permissions: { create: ['super_admin', 'admin'], update: ['super_admin', 'admin'], delete: ['super_admin'] },
+    permissions: { create: ['states:*', 'states:create'], update: ['states:*', 'states:update'], delete: ['states:*', 'states:delete'] },
     fields: [
       { name: 'name',      label: 'State Name', type: 'text', required: true, maxLength: 100 },
       { name: 'code',      label: 'State Code', type: 'text', required: true, maxLength: 10 },
@@ -54,7 +54,7 @@ export const MASTER_SCHEMA: Record<string, EntityMeta> = {
   cities: {
     label: 'City', pluralLabel: 'Cities', icon: 'building', apiEndpoint: '/api/v1/master/cities', idField: 'id', searchable: true,
     listColumns: ['name', 'stateId', 'isActive'],
-    permissions: { create: ['super_admin', 'admin'], update: ['super_admin', 'admin'], delete: ['super_admin'] },
+    permissions: { create: ['cities:*', 'cities:create'], update: ['cities:*', 'cities:update'], delete: ['cities:*', 'cities:delete'] },
     fields: [
       { name: 'name',      label: 'City Name', type: 'text',    required: true, maxLength: 100 },
       { name: 'stateId',   label: 'State',     type: 'select',  required: true, placeholder: 'Select state' },
@@ -66,7 +66,7 @@ export const MASTER_SCHEMA: Record<string, EntityMeta> = {
   categories: {
     label: 'Category', pluralLabel: 'Categories', icon: 'tag', apiEndpoint: '/api/v1/master/categories', idField: 'id', searchable: true,
     listColumns: ['name', 'code', 'parentId', 'sortOrder', 'isActive'],
-    permissions: { create: ['super_admin', 'admin', 'editor'], update: ['super_admin', 'admin', 'editor'], delete: ['super_admin', 'admin'] },
+    permissions: { create: ['categories:*', 'categories:create'], update: ['categories:*', 'categories:update'], delete: ['categories:*', 'categories:delete'] },
     fields: [
       { name: 'name',        label: 'Category Name', type: 'text',     required: true, maxLength: 200 },
       { name: 'code',        label: 'Code',          type: 'text',     required: true, maxLength: 50 },
@@ -80,7 +80,7 @@ export const MASTER_SCHEMA: Record<string, EntityMeta> = {
   tags: {
     label: 'Tag', pluralLabel: 'Tags', icon: 'hash', apiEndpoint: '/api/v1/master/tags', idField: 'id', searchable: false,
     listColumns: ['name', 'slug', 'color', 'isActive'],
-    permissions: { create: ['super_admin', 'admin', 'editor'], update: [], delete: ['super_admin', 'admin'] },
+    permissions: { create: ['tags:*', 'tags:create'], update: ['tags:*', 'tags:update'], delete: ['tags:*', 'tags:delete'] },
     fields: [
       { name: 'name',  label: 'Tag Name', type: 'text',  required: true, maxLength: 100 },
       { name: 'color', label: 'Color',    type: 'color' },
@@ -89,7 +89,7 @@ export const MASTER_SCHEMA: Record<string, EntityMeta> = {
   'document-types': {
     label: 'Document Type', pluralLabel: 'Document Types', icon: 'file-text', apiEndpoint: '/api/v1/master/document-types', idField: 'id', searchable: false,
     listColumns: ['name', 'code', 'maxSizeMb', 'isRequired', 'isActive'],
-    permissions: { create: ['super_admin', 'admin'], update: ['super_admin', 'admin'], delete: ['super_admin'] },
+    permissions: { create: ['document-types:*', 'document-types:create'], update: ['document-types:*', 'document-types:update'], delete: ['document-types:*', 'document-types:delete'] },
     fields: [
       { name: 'name',        label: 'Name',          type: 'text',     required: true, maxLength: 200 },
       { name: 'code',        label: 'Code',          type: 'text',     required: true, maxLength: 50 },
@@ -102,7 +102,7 @@ export const MASTER_SCHEMA: Record<string, EntityMeta> = {
   'service-types': {
     label: 'Service Type', pluralLabel: 'Service Types', icon: 'layers', apiEndpoint: '/api/v1/master/service-types', idField: 'id', searchable: false,
     listColumns: ['name', 'code', 'routeLink', 'icon', 'isActive'],
-    permissions: { create: ['super_admin', 'admin'], update: ['super_admin', 'admin'], delete: ['super_admin'] },
+    permissions: { create: ['service-types:*', 'service-types:create'], update: ['service-types:*', 'service-types:update'], delete: ['service-types:*', 'service-types:delete'] },
     fields: [
       { name: 'name',        label: 'Service Name',  type: 'text',     required: true, maxLength: 200 },
       { name: 'code',        label: 'Code',          type: 'text',     required: true, maxLength: 50,  placeholder: 'e.g. USER_REG' },
@@ -115,7 +115,7 @@ export const MASTER_SCHEMA: Record<string, EntityMeta> = {
   settings: {
     label: 'Setting', pluralLabel: 'System Settings', icon: 'settings', apiEndpoint: '/api/v1/master/settings', idField: 'key', searchable: false,
     listColumns: ['key', 'value', 'type', 'category', 'isPublic'],
-    permissions: { create: ['super_admin'], update: ['super_admin'], delete: ['super_admin'] },
+    permissions: { create: ['settings:*', 'settings:create'], update: ['settings:*', 'settings:update'], delete: ['settings:*', 'settings:delete'] },
     fields: [
       { name: 'key',         label: 'Key',          type: 'text',    required: true, maxLength: 200 },
       { name: 'value',       label: 'Value',        type: 'textarea' },

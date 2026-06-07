@@ -1,6 +1,7 @@
 // ─── Auth ──────────────────────────────────────────────────────────────────────
 export type UserCategory = 'external' | 'internal' | 'admin';
 export type UserStatus   = 'active' | 'inactive' | 'suspended';
+export type ModuleType   = 'admin' | 'internal' | 'external';
 
 export interface IUser {
   id: string;
@@ -76,7 +77,7 @@ export interface ITag        { id: string; name: string; slug: string; color?: s
 export interface IDocumentType { id: string; name: string; code: string; description?: string | null; maxSizeMb: number; isRequired: boolean; isActive: boolean; }
 export interface IServiceType  { id: string; name: string; code: string; description?: string | null; routeLink?: string | null; icon?: string | null; isActive: boolean; }
 export interface ISystemSetting { id: string; key: string; value?: string | null; type: string; description?: string | null; isPublic: boolean; category: string; }
-export interface IModuleMenu { id: string; name: string; code: string; route: string; icon?: string | null; parentId?: string | null; sortOrder: number; permissions: string[]; isActive: boolean; }
+export interface IModuleMenu { id: string; name: string; code: string; route: string; icon?: string | null; parentId?: string | null; moduleType?: ModuleType; sortOrder: number; permissions: string[]; isActive: boolean; }
 
 // ─── API Response wrapper ──────────────────────────────────────────────────────
 export interface ApiResponse<T> {

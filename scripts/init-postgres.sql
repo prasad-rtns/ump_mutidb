@@ -18,6 +18,7 @@ CREATE TYPE user_status AS ENUM ('active', 'inactive', 'suspended');
 CREATE TYPE user_role_slug AS ENUM ('admin', 'lead', 'user');
 CREATE TYPE user_category AS ENUM ('external', 'internal', 'admin');
 CREATE TYPE company_utility_type AS ENUM ('company', 'utility');
+CREATE TYPE module_type AS ENUM ('admin', 'internal', 'external');
 
 -- Roles
 CREATE TABLE IF NOT EXISTS roles (
@@ -117,6 +118,7 @@ CREATE TABLE IF NOT EXISTS module_menus (
     route VARCHAR(300),
     icon VARCHAR(100),
     parent_id UUID,
+    module_type module_type DEFAULT 'admin' NOT NULL,
     sort_order INTEGER DEFAULT 0 NOT NULL,
     permissions JSONB DEFAULT '[]',
     is_active BOOLEAN DEFAULT TRUE NOT NULL,
@@ -163,7 +165,7 @@ CREATE INDEX idx_audit_entity ON audit_logs(entity, entity_id);
 -- Roles
 INSERT INTO roles (id, name, slug, description, permissions) VALUES
     ('550e8400-e29b-41d4-a716-446655440001', 'Administrator', 'admin', 'Full system access', '["users:*","master:*","documents:*","settings:*"]'),
-    ('550e8400-e29b-41d4-a716-446655440002', 'Team Lead', 'lead', 'Department-level access', '["countries:read","dashboard:read","documents:*","master:read","users:read"]'),
+    ('550e8400-e29b-41d4-a716-446655440002', 'Team Lead', 'lead', 'Department-level access', '["countries:read","dashboard:read","documents:*","master:read","external-users:read"]'),
     ('550e8400-e29b-41d4-a716-446655440003', 'User', 'user', 'Self-service access', '["users:self","documents:own"]')
 ON CONFLICT (slug) DO NOTHING;
 
@@ -203,14 +205,14 @@ INSERT INTO module_menus (id, name, code, route, icon, parent_id, sort_order, pe
     ('990e8400-e29b-41d4-a716-446655440116', 'Document Types', 'document-types', '/master/document-types', 'FileText', '990e8400-e29b-41d4-a716-446655440102', 60, '["document-types:read","document-types:create","document-types:update","document-types:delete"]'),
     ('990e8400-e29b-41d4-a716-446655440117', 'Service Types', 'service-types', '/master/service-types', 'Layers', '990e8400-e29b-41d4-a716-446655440102', 70, '["service-types:read","service-types:create","service-types:update","service-types:delete"]'),
     ('990e8400-e29b-41d4-a716-446655440118', 'Settings', 'settings', '/master/settings', 'Settings', '990e8400-e29b-41d4-a716-446655440102', 80, '["settings:read","settings:create","settings:update","settings:delete"]'),
-    ('990e8400-e29b-41d4-a716-446655440103', 'User Management', 'user-management', '#', 'ShieldCheck', NULL, 30, '["users:read"]'),
+    ('990e8400-e29b-41d4-a716-446655440103', 'User Management', 'user-management', '#', 'ShieldCheck', NULL, 30, '["user-management:read"]'),
     ('990e8400-e29b-41d4-a716-446655440121', 'Roles', 'roles', '/user-management/roles', 'ShieldCheck', '990e8400-e29b-41d4-a716-446655440103', 10, '["roles:read","roles:create","roles:update","roles:delete"]'),
     ('990e8400-e29b-41d4-a716-446655440122', 'Company', 'companies', '/user-management/companies', 'Building2', '990e8400-e29b-41d4-a716-446655440103', 20, '["companies:read","companies:create","companies:update","companies:delete"]'),
     ('990e8400-e29b-41d4-a716-446655440123', 'Departments', 'departments', '/user-management/departments', 'FolderTree', '990e8400-e29b-41d4-a716-446655440103', 30, '["departments:read","departments:create","departments:update","departments:delete"]'),
     ('990e8400-e29b-41d4-a716-446655440124', 'Designations', 'designations', '/user-management/designations', 'BadgeCheck', '990e8400-e29b-41d4-a716-446655440103', 40, '["designations:read","designations:create","designations:update","designations:delete"]'),
     ('990e8400-e29b-41d4-a716-446655440125', 'Modules', 'modules', '/user-management/modules', 'MenuSquare', '990e8400-e29b-41d4-a716-446655440103', 50, '["modules:read","modules:create","modules:update","modules:delete"]'),
-    ('990e8400-e29b-41d4-a716-446655440126', 'External Users', 'external-users', '/users/external', 'Users', '990e8400-e29b-41d4-a716-446655440103', 60, '["users:read","users:create","users:update","users:delete"]'),
-    ('990e8400-e29b-41d4-a716-446655440127', 'Internal Users', 'internal-users', '/users/internal', 'UserCheck', '990e8400-e29b-41d4-a716-446655440103', 70, '["users:read","users:create","users:update","users:delete"]'),
+    ('990e8400-e29b-41d4-a716-446655440126', 'External Users', 'external-users', '/users/external', 'Users', '990e8400-e29b-41d4-a716-446655440103', 60, '["external-users:read","external-users:create","external-users:update","external-users:delete"]'),
+    ('990e8400-e29b-41d4-a716-446655440127', 'Internal Users', 'internal-users', '/users/internal', 'UserCheck', '990e8400-e29b-41d4-a716-446655440103', 70, '["internal-users:read","internal-users:create","internal-users:update","internal-users:delete"]'),
     ('990e8400-e29b-41d4-a716-446655440128', 'Admin Users', 'admin-users', '/users/admin', 'UserCog', '990e8400-e29b-41d4-a716-446655440103', 80, '["admin-users:read","admin-users:create","admin-users:update","admin-users:delete"]')
 ON CONFLICT (code) DO NOTHING;
 

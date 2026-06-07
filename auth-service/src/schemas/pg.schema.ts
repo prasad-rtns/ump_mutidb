@@ -8,6 +8,7 @@ export const userStatusEnum = pgEnum('user_status', ['active', 'inactive', 'susp
 export const userRoleEnum = pgEnum('user_role_slug', ['admin', 'lead', 'user']);
 export const userCategoryEnum = pgEnum('user_category', ['external', 'internal', 'admin']);
 export const companyUtilityTypeEnum = pgEnum('company_utility_type', ['company', 'utility']);
+export const moduleTypeEnum = pgEnum('module_type', ['admin', 'internal', 'external']);
 
 // ─── Roles table ──────────────────────────────────────────────────────────────
 export const roles = pgTable('roles', {
@@ -117,6 +118,7 @@ export const moduleMenus = pgTable('module_menus', {
   route: varchar('route', { length: 300 }),
   icon: varchar('icon', { length: 100 }),
   parentId: uuid('parent_id'),
+  moduleType: moduleTypeEnum('module_type').default('admin').notNull(),
   sortOrder: integer('sort_order').default(0).notNull(),
   permissions: jsonb('permissions').$type<string[]>().default([]),
   isActive: boolean('is_active').default(true).notNull(),

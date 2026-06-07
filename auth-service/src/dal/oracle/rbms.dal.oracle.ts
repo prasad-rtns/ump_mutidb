@@ -63,25 +63,25 @@ export class OracleCompanyOrUtilityDAL extends OracleBase implements ICompanyOrU
 
 export class OracleModuleMenuDAL extends OracleBase implements IModuleMenuDAL {
   async findAll(activeOnly = true): Promise<IModuleMenu[]> {
-    const result = await this.q<Record<string, unknown>>(`SELECT id, name, code, route, icon, parent_id, sort_order, permissions, is_active, created_at, updated_at FROM module_menus ${activeOnly ? 'WHERE is_active = 1' : ''} ORDER BY sort_order, name`);
+    const result = await this.q<Record<string, unknown>>(`SELECT id, name, code, route, icon, parent_id, module_type, sort_order, permissions, is_active, created_at, updated_at FROM module_menus ${activeOnly ? 'WHERE is_active = 1' : ''} ORDER BY sort_order, name`);
     return (result.rows ?? []).map(mapModuleRow);
   }
 
   async findById(id: string): Promise<IModuleMenu | null> {
-    const result = await this.q<Record<string, unknown>>('SELECT id, name, code, route, icon, parent_id, sort_order, permissions, is_active, created_at, updated_at FROM module_menus WHERE id = :id', { id });
+    const result = await this.q<Record<string, unknown>>('SELECT id, name, code, route, icon, parent_id, module_type, sort_order, permissions, is_active, created_at, updated_at FROM module_menus WHERE id = :id', { id });
     return result.rows?.[0] ? mapModuleRow(result.rows[0]) : null;
   }
 
   async findByCode(code: string): Promise<IModuleMenu | null> {
-    const result = await this.q<Record<string, unknown>>('SELECT id, name, code, route, icon, parent_id, sort_order, permissions, is_active, created_at, updated_at FROM module_menus WHERE code = :code', { code });
+    const result = await this.q<Record<string, unknown>>('SELECT id, name, code, route, icon, parent_id, module_type, sort_order, permissions, is_active, created_at, updated_at FROM module_menus WHERE code = :code', { code });
     return result.rows?.[0] ? mapModuleRow(result.rows[0]) : null;
   }
 
   async create(data: CreateModuleMenuDTO): Promise<IModuleMenu> {
     const id = uuidv4();
-    await this.q('INSERT INTO module_menus (id, name, code, route, icon, parent_id, sort_order, permissions, is_active, created_at, updated_at) VALUES (:id, :name, :code, :route, :icon, :parentId, :sortOrder, :permissions, 1, SYSTIMESTAMP, SYSTIMESTAMP)', {
+    await this.q('INSERT INTO module_menus (id, name, code, route, icon, parent_id, module_type, sort_order, permissions, is_active, created_at, updated_at) VALUES (:id, :name, :code, :route, :icon, :parentId, :moduleType, :sortOrder, :permissions, 1, SYSTIMESTAMP, SYSTIMESTAMP)', {
       id, name: data.name, code: data.code, route: data.route, icon: data.icon ?? null,
-      parentId: data.parentId || null, sortOrder: data.sortOrder ?? 0, permissions: JSON.stringify(data.permissions ?? []),
+      parentId: data.parentId || null, moduleType: data.moduleType ?? 'admin', sortOrder: data.sortOrder ?? 0, permissions: JSON.stringify(data.permissions ?? []),
     });
     return (await this.findById(id))!;
   }
@@ -89,7 +89,7 @@ export class OracleModuleMenuDAL extends OracleBase implements IModuleMenuDAL {
   async update(id: string, data: UpdateModuleMenuDTO): Promise<IModuleMenu | null> {
     const sets: string[] = ['updated_at = SYSTIMESTAMP'];
     const binds: Record<string, unknown> = { id };
-    const fieldMap: Record<string, string> = { name: 'name', code: 'code', route: 'route', icon: 'icon', parentId: 'parent_id', sortOrder: 'sort_order' };
+    const fieldMap: Record<string, string> = { name: 'name', code: 'code', route: 'route', icon: 'icon', parentId: 'parent_id', moduleType: 'module_type', sortOrder: 'sort_order' };
     for (const [key, col] of Object.entries(fieldMap)) {
       if (key in data) { binds[key] = (data as Record<string, unknown>)[key]; sets.push(`${col} = :${key}`); }
     }

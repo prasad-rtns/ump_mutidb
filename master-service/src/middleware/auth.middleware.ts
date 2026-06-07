@@ -19,6 +19,34 @@ const mapUserPayload = (userData: any): JwtPayload => ({
   sessionId: 'external',
 });
 
+const normalizePermission = (value: string) => value.trim().toLowerCase().replace(/[\s_]+/g, '-');
+
+const permissionList = (permissions: unknown): string[] => {
+  if (Array.isArray(permissions)) return permissions.map(String).filter(Boolean);
+  if (permissions && typeof permissions === 'object') {
+    return Object.entries(permissions as Record<string, unknown>).flatMap(([resource, actions]) =>
+      Array.isArray(actions) ? actions.map((action) => `${resource}:${String(action)}`) : [],
+    );
+  }
+  return [];
+};
+
+const permissionMatches = (actual: string, required: string): boolean => {
+  const [actualResource = '', actualAction = ''] = normalizePermission(actual).split(':');
+  const [requiredResource = '', requiredAction = ''] = normalizePermission(required).split(':');
+
+  if (!actualResource || !requiredResource) return false;
+  if (actualResource === '*' || normalizePermission(actual) === '*') return true;
+  if (actualResource !== requiredResource) return false;
+  return actualAction === '*' || actualAction === requiredAction;
+};
+
+const isElevatedRole = (role?: string) =>
+  ['admin', 'super-admin', 'super_admin', 'super-user', 'super_user'].includes(role ?? '');
+
+const hasAnyRequiredPermission = (permissions: string[], required: string[]) =>
+  required.some((needed) => permissions.some((actual) => permissionMatches(actual, needed)));
+
 export const authenticate = async (
   req: Request,
   res: Response,
@@ -43,6 +71,7 @@ export const authenticate = async (
     }
 
     req.user = mapUserPayload(userData);
+    (req as Request & { permissions?: string[] }).permissions = permissionList(userData.role?.permissions ?? userData.permissions);
     next();
   } catch (error) {
     const apiError = error as AxiosError<any>;
@@ -63,6 +92,28 @@ export const authorize = (...roles: JwtPayload['role'][]) => {
       ResponseUtil.forbidden(res, `Access denied. Required roles: ${roles.join(', ')}`);
       return;
     }
+    next();
+  };
+};
+
+export const requireAnyPermission = (...required: string[]) => {
+  return (req: Request, res: Response, next: NextFunction): void => {
+    if (!req.user) {
+      ResponseUtil.unauthorized(res);
+      return;
+    }
+
+    if (isElevatedRole(req.user.role)) {
+      next();
+      return;
+    }
+
+    const permissions = (req as Request & { permissions?: string[] }).permissions ?? [];
+    if (!hasAnyRequiredPermission(permissions, required)) {
+      ResponseUtil.forbidden(res, `Access denied. Required permissions: ${required.join(', ')}`);
+      return;
+    }
+
     next();
   };
 };

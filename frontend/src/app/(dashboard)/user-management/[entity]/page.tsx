@@ -28,6 +28,13 @@ function permissionSummary(row: Record<string, unknown>, t: (key: string, params
   );
 }
 
+function moduleTypeLabel(value: unknown, t: (key: string, params?: TranslationParams, fallback?: string) => string) {
+  const moduleType = String(value ?? 'admin');
+  if (moduleType === 'internal') return t('rbms.moduleTypes.internal');
+  if (moduleType === 'external') return t('rbms.moduleTypes.external');
+  return t('rbms.moduleTypes.admin');
+}
+
 export default function UserManagementEntityPage({ params }: Props) {
   const { entity } = params;
   const { t } = useTranslation();
@@ -138,6 +145,7 @@ export default function UserManagementEntityPage({ params }: Props) {
       columns: [
         { key: 'name', label: t('labels.name'), render: (row) => translatedModuleName({ code: String(row.code ?? ''), name: String(row.name ?? '') }, t) },
         text('code', t('labels.code')),
+        { key: 'moduleType', label: t('labels.moduleType'), render: (row) => moduleTypeLabel(row.moduleType, t) },
         text('route', t('labels.route')),
         { key: 'permissions', label: t('labels.permissions'), render: (row) => Array.isArray(row.permissions) ? row.permissions.join(', ') : '' },
         { key: 'isActive', label: t('labels.status'), render: (row) => <ActiveBadge row={row} /> },
@@ -148,6 +156,11 @@ export default function UserManagementEntityPage({ params }: Props) {
         { name: 'route', label: t('labels.route'), required: true, placeholder: '/user-management/roles' },
         { name: 'icon', label: t('labels.icon') },
         { name: 'parentId', label: t('labels.parentModule'), type: 'select', options: modules?.map((m) => ({ value: m.id, label: translatedModuleName(m, t) })) ?? [] },
+        { name: 'moduleType', label: t('labels.moduleType'), type: 'select', required: true, options: [
+          { value: 'admin', label: t('rbms.moduleTypes.admin') },
+          { value: 'internal', label: t('rbms.moduleTypes.internal') },
+          { value: 'external', label: t('rbms.moduleTypes.external') },
+        ] },
         { name: 'sortOrder', label: t('labels.sortOrder'), type: 'number' },
         { name: 'permissions', label: t('labels.permissions'), type: 'permissions', placeholder: 'modules:read\nmodules:create\nmodules:update\nmodules:delete' },
       ],
