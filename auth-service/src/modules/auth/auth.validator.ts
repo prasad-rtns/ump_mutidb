@@ -17,6 +17,7 @@ export const registerValidator = [
   body('lastName').trim().notEmpty().withMessage('Last name is required').isLength({ max: 100 }),
   body('phone').optional().isMobilePhone('any').withMessage('Invalid phone number'),
   body('roleId').notEmpty().isUUID().withMessage('Valid role ID required'),
+  body('companyId').optional({ nullable: true, checkFalsy: true }).isUUID().withMessage('Valid company/utility ID required'),
   body('departmentId').notEmpty().isUUID().withMessage('Valid department ID required'),
   body('designationId').notEmpty().isUUID().withMessage('Valid designation ID required'),
 ];

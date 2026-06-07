@@ -40,7 +40,7 @@ db.roles.insertMany([
     name: 'Team Lead',
     slug: 'lead',
     description: 'Department-level access',
-    permissions: ['users:read', 'users:update', 'documents:*'],
+    permissions: ['countries:read', 'dashboard:read', 'documents:*', 'master:read', 'users:read'],
     isActive: true,
     createdAt: new Date(),
     updatedAt: new Date()

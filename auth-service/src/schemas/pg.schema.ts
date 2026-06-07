@@ -7,6 +7,7 @@ import { relations } from 'drizzle-orm';
 export const userStatusEnum = pgEnum('user_status', ['active', 'inactive', 'suspended']);
 export const userRoleEnum = pgEnum('user_role_slug', ['admin', 'lead', 'user']);
 export const userCategoryEnum = pgEnum('user_category', ['external', 'internal', 'admin']);
+export const companyUtilityTypeEnum = pgEnum('company_utility_type', ['company', 'utility']);
 
 // ─── Roles table ──────────────────────────────────────────────────────────────
 export const roles = pgTable('roles', {
@@ -20,6 +21,20 @@ export const roles = pgTable('roles', {
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 }, (table) => ({
   slugIdx: uniqueIndex('roles_slug_idx').on(table.slug),
+}));
+
+// â”€â”€â”€ Company / Utilities table â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+export const companies = pgTable('company_or_utilities', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  name: varchar('name', { length: 200 }).notNull(),
+  code: varchar('code', { length: 50 }).notNull().unique(),
+  type: companyUtilityTypeEnum('type').default('company').notNull(),
+  description: text('description'),
+  isActive: boolean('is_active').default(true).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => ({
+  codeIdx: uniqueIndex('company_or_utilities_code_idx').on(table.code),
 }));
 
 // ─── Departments table ────────────────────────────────────────────────────────
@@ -66,6 +81,7 @@ export const users = pgTable('users', {
   phone: varchar('phone', { length: 20 }),
   avatar: text('avatar'),
   roleId: uuid('role_id').notNull().references(() => roles.id),
+  companyId: uuid('company_id').references(() => companies.id),
   departmentId: uuid('department_id').notNull().references(() => departments.id),
   designationId: uuid('designation_id').notNull().references(() => designations.id),
   userCategory: userCategoryEnum('user_category').default('internal').notNull(),
@@ -88,8 +104,27 @@ export const users = pgTable('users', {
   emailIdx: uniqueIndex('users_email_idx').on(table.email),
   usernameIdx: uniqueIndex('users_username_idx').on(table.username),
   roleIdx: index('users_role_idx').on(table.roleId),
+  companyIdx: index('users_company_idx').on(table.companyId),
   deptIdx: index('users_dept_idx').on(table.departmentId),
   statusIdx: index('users_status_idx').on(table.status),
+}));
+
+// â”€â”€â”€ Module menus table â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+export const moduleMenus = pgTable('module_menus', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  name: varchar('name', { length: 150 }).notNull(),
+  code: varchar('code', { length: 100 }).notNull().unique(),
+  route: varchar('route', { length: 300 }),
+  icon: varchar('icon', { length: 100 }),
+  parentId: uuid('parent_id'),
+  sortOrder: integer('sort_order').default(0).notNull(),
+  permissions: jsonb('permissions').$type<string[]>().default([]),
+  isActive: boolean('is_active').default(true).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => ({
+  codeIdx: uniqueIndex('module_menus_code_idx').on(table.code),
+  parentIdx: index('module_menus_parent_idx').on(table.parentId),
 }));
 
 // ─── Sessions table ───────────────────────────────────────────────────────────
@@ -129,9 +164,14 @@ export const auditLogs = pgTable('audit_logs', {
 // ─── Relations ────────────────────────────────────────────────────────────────
 export const usersRelations = relations(users, ({ one, many }) => ({
   role: one(roles, { fields: [users.roleId], references: [roles.id] }),
+  company: one(companies, { fields: [users.companyId], references: [companies.id] }),
   department: one(departments, { fields: [users.departmentId], references: [departments.id] }),
   designation: one(designations, { fields: [users.designationId], references: [designations.id] }),
   sessions: many(sessions),
+}));
+
+export const companiesRelations = relations(companies, ({ many }) => ({
+  users: many(users),
 }));
 
 export const departmentsRelations = relations(departments, ({ one, many }) => ({
@@ -151,9 +191,11 @@ export const sessionsRelations = relations(sessions, ({ one }) => ({
 // ─── Export all schema ────────────────────────────────────────────────────────
 export const pgSchema = {
   roles,
+  companies,
   departments,
   designations,
   users,
+  moduleMenus,
   sessions,
   auditLogs,
 };

@@ -1,7 +1,19 @@
 import { DALFactory }           from '../../dal/dal.factory';
 import { CacheService }          from '@prasad-rtns/shared';
 import { DatabaseType }          from '@prasad-rtns/shared';
-import { CreateRoleDTO, UpdateRoleDTO, CreateDepartmentDTO, UpdateDepartmentDTO, CreateDesignationDTO, UpdateDesignationDTO } from './master.types';
+import {
+  CreateRoleDTO,
+  UpdateRoleDTO,
+  CreateDepartmentDTO,
+  UpdateDepartmentDTO,
+  CreateDesignationDTO,
+  UpdateDesignationDTO,
+  CreateCompanyOrUtilityDTO,
+  UpdateCompanyOrUtilityDTO,
+  CreateModuleMenuDTO,
+  UpdateModuleMenuDTO,
+  IModuleMenu,
+} from './master.types';
 import logger                    from '../../database/logger';
 
 const cache = new CacheService('master-auth');
@@ -105,6 +117,42 @@ export class DepartmentService {
   }
 }
 
+export class CompanyOrUtilityService {
+  private constructor(private readonly dal: Awaited<ReturnType<typeof DALFactory.get>>) {}
+
+  static async create(dbType: DatabaseType) {
+    return new CompanyOrUtilityService(await DALFactory.get(dbType));
+  }
+
+  async list(activeOnly = true) {
+    return this.dal.company.findAll(activeOnly);
+  }
+
+  async getById(id: string) {
+    const company = await this.dal.company.findById(id);
+    if (!company) throw new Error('Company/utility not found');
+    return company;
+  }
+
+  async createCompany(data: CreateCompanyOrUtilityDTO) {
+    const existing = await this.dal.company.findByCode(data.code);
+    if (existing) throw new Error(`Company/utility code '${data.code}' already exists`);
+    return this.dal.company.create(data);
+  }
+
+  async updateCompany(id: string, data: UpdateCompanyOrUtilityDTO) {
+    const company = await this.dal.company.update(id, data);
+    if (!company) throw new Error('Company/utility not found');
+    return company;
+  }
+
+  async deleteCompany(id: string) {
+    const ok = await this.dal.company.delete(id);
+    if (!ok) throw new Error('Company/utility not found or already inactive');
+    return { message: 'Company/utility deactivated' };
+  }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 //  DesignationService
 // ─────────────────────────────────────────────────────────────────────────────
@@ -153,5 +201,46 @@ export class DesignationService {
     if (!ok) throw new Error('Designation not found or already inactive');
     await cache.delPattern('designations:*');
     return { message: 'Designation deactivated' };
+  }
+}
+
+export class ModuleMenuService {
+  private constructor(private readonly dal: Awaited<ReturnType<typeof DALFactory.get>>) {}
+
+  static async create(dbType: DatabaseType) {
+    return new ModuleMenuService(await DALFactory.get(dbType));
+  }
+
+  async list(activeOnly = true) {
+    return this.dal.moduleMenu.findAll(activeOnly);
+  }
+
+  async getById(id: string) {
+    const module = await this.dal.moduleMenu.findById(id);
+    if (!module) throw new Error('Module menu not found');
+    return module;
+  }
+
+  async createModule(data: CreateModuleMenuDTO) {
+    const existing = await this.dal.moduleMenu.findByCode(data.code);
+    if (existing) throw new Error(`Module code '${data.code}' already exists`);
+    return this.dal.moduleMenu.create(data);
+  }
+
+  async updateModule(id: string, data: UpdateModuleMenuDTO) {
+    const module = await this.dal.moduleMenu.update(id, data);
+    if (!module) throw new Error('Module menu not found');
+    return module;
+  }
+
+  async deleteModule(id: string) {
+    const ok = await this.dal.moduleMenu.delete(id);
+    if (!ok) throw new Error('Module menu not found or already inactive');
+    return { message: 'Module menu deactivated' };
+  }
+
+  async permissionsCatalogue() {
+    const rows = await this.list(true) as IModuleMenu[];
+    return rows.flatMap((m) => m.permissions ?? []);
   }
 }

@@ -2,7 +2,7 @@ import { and, asc, count, desc, eq, like, or, sql } from 'drizzle-orm';
 import type { MySql2Database } from 'drizzle-orm/mysql2';
 import { v4 as uuidv4 } from 'uuid';
 import { PaginatedResult } from '@prasad-rtns/shared';
-import { users, roles, departments, designations, sessions } from '../../schemas/mysql.schema';
+import { users, roles, companies, departments, designations, sessions } from '../../schemas/mysql.schema';
 import { IUserDAL } from '../interfaces/user.dal.interface';
 import { ISessionDAL } from '../interfaces/session.dal.interface';
 import { IRoleDAL, IDepartmentDAL, IDesignationDAL } from '../interfaces/role-dept-desig.dal.interface';
@@ -29,6 +29,7 @@ const mapUser = (row: typeof users.$inferSelect): IUser => ({
   userCategory: row.userCategory ?? 'internal',
   phone: row.phone ?? null,
   avatar: row.avatar ?? null,
+  companyId: row.companyId ?? null,
   emailVerificationToken: row.emailVerificationToken ?? null,
   passwordResetToken: row.passwordResetToken ?? null,
   passwordResetExpires: row.passwordResetExpires ?? null,
@@ -55,9 +56,10 @@ export class MysqlUserDAL implements IUserDAL {
 
   async findByIdWithRelations(id: string): Promise<IUser | null> {
     const rows = await this.db
-      .select({ user: users, role: roles, department: departments, designation: designations })
+      .select({ user: users, role: roles, company: companies, department: departments, designation: designations })
       .from(users)
       .leftJoin(roles, eq(users.roleId, roles.id))
+      .leftJoin(companies, eq(users.companyId, companies.id))
       .leftJoin(departments, eq(users.departmentId, departments.id))
       .leftJoin(designations, eq(users.designationId, designations.id))
       .where(eq(users.id, id))
@@ -67,6 +69,7 @@ export class MysqlUserDAL implements IUserDAL {
     return {
       ...mapUser(rows[0].user),
       role: rows[0].role ? mapRole(rows[0].role) : undefined,
+      company: rows[0].company ?? undefined,
       department: rows[0].department ?? undefined,
       designation: rows[0].designation ?? undefined,
     };
@@ -117,6 +120,8 @@ export class MysqlUserDAL implements IUserDAL {
     if (status) conditions.push(eq(users.status, status));
     if (departmentId) conditions.push(eq(users.departmentId, departmentId));
     if (roleId) conditions.push(eq(users.roleId, roleId));
+    if (filter.companyId) conditions.push(eq(users.companyId, filter.companyId));
+    if (filter.userCategory) conditions.push(eq(users.userCategory, filter.userCategory));
     if (search) {
       conditions.push(
         or(
@@ -134,9 +139,10 @@ export class MysqlUserDAL implements IUserDAL {
 
     const [data, totals] = await Promise.all([
       this.db
-        .select({ user: users, role: roles, department: departments, designation: designations })
+        .select({ user: users, role: roles, company: companies, department: departments, designation: designations })
         .from(users)
         .leftJoin(roles, eq(users.roleId, roles.id))
+        .leftJoin(companies, eq(users.companyId, companies.id))
         .leftJoin(departments, eq(users.departmentId, departments.id))
         .leftJoin(designations, eq(users.designationId, designations.id))
         .where(where)
@@ -147,9 +153,10 @@ export class MysqlUserDAL implements IUserDAL {
     ]);
 
     return {
-      data: data.map(({ user, role, department, designation }) => ({
+      data: data.map(({ user, role, company, department, designation }) => ({
         ...mapUser(user),
         role: role ? mapRole(role) : undefined,
+        company: company ?? undefined,
         department: department ?? undefined,
         designation: designation ?? undefined,
       })),
@@ -171,6 +178,7 @@ export class MysqlUserDAL implements IUserDAL {
       phone: data.phone ?? null,
       avatar: data.avatar ?? null,
       roleId: data.roleId,
+      companyId: data.companyId ?? null,
       departmentId: data.departmentId,
       designationId: data.designationId,
       userCategory: data.userCategory ?? 'internal',
@@ -197,6 +205,7 @@ export class MysqlUserDAL implements IUserDAL {
     if (data.phone !== undefined) updateData.phone = data.phone ?? null;
     if (data.avatar !== undefined) updateData.avatar = data.avatar ?? null;
     if (data.roleId !== undefined) updateData.roleId = data.roleId;
+    if (data.companyId !== undefined) updateData.companyId = data.companyId ?? null;
     if (data.departmentId !== undefined) updateData.departmentId = data.departmentId;
     if (data.designationId !== undefined) updateData.designationId = data.designationId;
     if (data.status !== undefined) updateData.status = data.status;
@@ -263,6 +272,9 @@ export class MysqlUserDAL implements IUserDAL {
     else if (filter.departmentFilter && filter.departmentFilter !== 'all') conditions.push(eq(users.departmentId, filter.departmentFilter));
     if (filter.status) conditions.push(eq(users.status, filter.status));
     if (filter.departmentId) conditions.push(eq(users.departmentId, filter.departmentId));
+    if (filter.roleId) conditions.push(eq(users.roleId, filter.roleId));
+    if (filter.companyId) conditions.push(eq(users.companyId, filter.companyId));
+    if (filter.userCategory) conditions.push(eq(users.userCategory, filter.userCategory));
     const where = conditions.length ? and(...conditions) : undefined;
     const totals = await this.db.select({ total: count() }).from(users).where(where);
     return Number(totals[0]?.total ?? 0);

@@ -3,7 +3,7 @@ import type { Collection } from 'mongodb';
 import { IUserDAL } from '../interfaces/user.dal.interface';
 import { IUser, CreateUserDTO, UpdateUserDTO, UserFilter } from '../../modules/user/user.types';
 import { PaginatedResult } from '@prasad-rtns/shared';
-import { MongoCollections } from '../../schemas/mongo.schema';
+import { MongoCollections, MongoUser } from '../../schemas/mongo.schema';
 
 export class MongoUserDAL implements IUserDAL {
   private col: Collection;
@@ -14,35 +14,30 @@ export class MongoUserDAL implements IUserDAL {
 
   async findById(id: string): Promise<IUser | null> {
     const doc = await this.collections.users.findOne({ id });
-    return doc as unknown as IUser | null;
+    return doc ? this.mapUser(doc) : null;
   }
 
   async findByIdWithRelations(id: string): Promise<IUser | null> {
     const user = await this.collections.users.findOne({ id });
     if (!user) return null;
-    const [role, dept, desig] = await Promise.all([
-      this.collections.roles.findOne({ id: user.roleId }),
-      this.collections.departments.findOne({ id: user.departmentId }),
-      this.collections.designations.findOne({ id: user.designationId }),
-    ]);
-    return { ...user, role: role ?? undefined, department: dept ?? undefined, designation: desig ?? undefined } as unknown as IUser;
+    return this.withRelations(user);
   }
 
   async findByEmail(email: string): Promise<IUser | null> {
     const doc = await this.collections.users.findOne({ email: email.toLowerCase() });
-    return doc as unknown as IUser | null;
+    return doc ? this.mapUser(doc) : null;
   }
 
   async findByUsername(username: string): Promise<IUser | null> {
     const doc = await this.collections.users.findOne({ username });
-    return doc as unknown as IUser | null;
+    return doc ? this.mapUser(doc) : null;
   }
 
   async findByEmailOrUsername(identifier: string): Promise<IUser | null> {
     const doc = await this.collections.users.findOne({
       $or: [{ email: identifier.toLowerCase() }, { username: identifier }],
     });
-    return doc as unknown as IUser | null;
+    return doc ? this.mapUser(doc) : null;
   }
 
   async findAll(opts: UserFilter): Promise<PaginatedResult<IUser>> {
@@ -51,7 +46,7 @@ export class MongoUserDAL implements IUserDAL {
 
   async findFiltered(filter: UserFilter): Promise<PaginatedResult<IUser>> {
     const { page = 1, limit = 10, search, sortBy = 'createdAt', sortOrder = 'desc',
-      status, departmentId, roleId, departmentFilter, userFilter } = filter;
+      status, departmentId, roleId, companyId, userCategory, departmentFilter, userFilter } = filter;
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const query: Record<string, any> = {};
@@ -63,6 +58,8 @@ export class MongoUserDAL implements IUserDAL {
     if (status)       query.status = status;
     if (departmentId) query.departmentId = departmentId;
     if (roleId)       query.roleId = roleId;
+    if (companyId)    query.companyId = companyId;
+    if (userCategory) query.userCategory = userCategory;
     if (search) {
       query.$or = [
         { firstName:  { $regex: search, $options: 'i' } },
@@ -81,18 +78,34 @@ export class MongoUserDAL implements IUserDAL {
         .toArray(),
       this.collections.users.countDocuments(query),
     ]);
-    return { data: data as unknown as IUser[], total };
+    const usersWithRelations = await Promise.all(data.map(user => this.withRelations(user)));
+    return { data: usersWithRelations, total };
   }
 
   async create(data: CreateUserDTO): Promise<IUser> {
     const now = new Date();
     const doc = {
-      id: uuidv4(), ...(data as any),
+      id: uuidv4(),
+      username: data.username,
+      email: data.email.toLowerCase(),
+      password: data.password,
+      firstName: data.firstName,
+      lastName: data.lastName,
+      phone: data.phone ?? null,
+      avatar: data.avatar ?? null,
+      roleId: data.roleId,
+      companyId: data.companyId ?? null,
+      departmentId: data.departmentId,
+      designationId: data.designationId,
+      userCategory: data.userCategory ?? 'internal',
       status: 'active' as const,
       isEmailVerified: false,
       failedLoginAttempts: 0,
       twoFactorEnabled: false,
-      createdAt: now, updatedAt: now,
+      createdBy: data.createdBy ?? null,
+      updatedBy: null,
+      createdAt: now,
+      updatedAt: now,
     };
     await this.collections.users.insertOne(doc);
     return doc as unknown as IUser;
@@ -104,7 +117,7 @@ export class MongoUserDAL implements IUserDAL {
       { $set: { ...(data as any), updatedAt: new Date() } },
       { returnDocument: 'after' }
     );
-    return result as unknown as IUser | null;
+    return result ? this.mapUser(result) : null;
   }
 
   async delete(id: string): Promise<boolean> {
@@ -124,7 +137,7 @@ export class MongoUserDAL implements IUserDAL {
   async resetFailedLogins(id: string): Promise<void> {
     await this.collections.users.updateOne(
       { id },
-      { $set: { failedLoginAttempts: 0, lockUntil: undefined, updatedAt: new Date() } }
+      { $set: { failedLoginAttempts: 0, lockUntil: null, updatedAt: new Date() } }
     );
   }
 
@@ -161,6 +174,45 @@ export class MongoUserDAL implements IUserDAL {
     else if (filter.departmentFilter && filter.departmentFilter !== 'all') query.departmentId = filter.departmentFilter;
     if (filter.status) query.status = filter.status;
     if (filter.departmentId) query.departmentId = filter.departmentId;
+    if (filter.roleId) query.roleId = filter.roleId;
+    if (filter.companyId) query.companyId = filter.companyId;
+    if (filter.userCategory) query.userCategory = filter.userCategory;
     return this.collections.users.countDocuments(query);
+  }
+
+  private mapUser(user: MongoUser): IUser {
+    return {
+      ...user,
+      phone: user.phone ?? null,
+      avatar: user.avatar ?? null,
+      companyId: user.companyId ?? null,
+      userCategory: user.userCategory ?? 'internal',
+      emailVerificationToken: user.emailVerificationToken ?? null,
+      passwordResetToken: user.passwordResetToken ?? null,
+      passwordResetExpires: user.passwordResetExpires ?? null,
+      lockUntil: user.lockUntil ?? null,
+      twoFactorSecret: user.twoFactorSecret ?? null,
+      lastLoginAt: user.lastLoginAt ?? null,
+      lastLoginIp: user.lastLoginIp ?? null,
+      createdBy: user.createdBy ?? null,
+      updatedBy: user.updatedBy ?? null,
+    } as unknown as IUser;
+  }
+
+  private async withRelations(user: MongoUser): Promise<IUser> {
+    const [role, company, dept, desig] = await Promise.all([
+      this.collections.roles.findOne({ id: user.roleId }),
+      user.companyId ? this.collections.companies.findOne({ id: user.companyId }) : Promise.resolve(null),
+      this.collections.departments.findOne({ id: user.departmentId }),
+      this.collections.designations.findOne({ id: user.designationId }),
+    ]);
+
+    return {
+      ...this.mapUser(user),
+      role: role ?? undefined,
+      company: company ?? undefined,
+      department: dept ?? undefined,
+      designation: desig ?? undefined,
+    } as unknown as IUser;
   }
 }

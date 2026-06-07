@@ -1,4 +1,4 @@
-export type UserRoleSlug  = 'admin' | 'lead' | 'user';
+export type UserRoleSlug  = string;
 
 export interface IRole {
   id: string;
@@ -23,6 +23,17 @@ export interface IDepartment {
   updatedAt: Date;
 }
 
+export interface ICompanyOrUtility {
+  id: string;
+  name: string;
+  code: string;
+  type: 'company' | 'utility';
+  description?: string | null;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 export interface IDesignation {
   id: string;
   name: string;
@@ -30,6 +41,20 @@ export interface IDesignation {
   departmentId: string;
   level: number;
   description?: string | null;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface IModuleMenu {
+  id: string;
+  name: string;
+  code: string;
+  route: string;
+  icon?: string | null;
+  parentId?: string | null;
+  sortOrder: number;
+  permissions: string[];
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -57,6 +82,21 @@ export interface CreateDepartmentDTO {
   description?: string;
 }
 
+export interface CreateCompanyOrUtilityDTO {
+  name: string;
+  code: string;
+  type?: 'company' | 'utility';
+  description?: string;
+}
+
+export interface UpdateCompanyOrUtilityDTO {
+  name?: string;
+  code?: string;
+  type?: 'company' | 'utility';
+  description?: string;
+  isActive?: boolean;
+}
+
 export interface UpdateDepartmentDTO {
   name?: string;
   code?: string;
@@ -80,5 +120,26 @@ export interface UpdateDesignationDTO {
   departmentId?: string;
   level?: number;
   description?: string;
+  isActive?: boolean;
+}
+
+export interface CreateModuleMenuDTO {
+  name: string;
+  code: string;
+  route: string;
+  icon?: string;
+  parentId?: string | null;
+  sortOrder?: number;
+  permissions?: string[];
+}
+
+export interface UpdateModuleMenuDTO {
+  name?: string;
+  code?: string;
+  route?: string;
+  icon?: string | null;
+  parentId?: string | null;
+  sortOrder?: number;
+  permissions?: string[];
   isActive?: boolean;
 }

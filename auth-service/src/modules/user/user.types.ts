@@ -4,7 +4,7 @@
 export type UserStatus    = 'active' | 'inactive' | 'suspended';
 export type UserRoleSlug  = 'admin' | 'lead' | 'user';
 export type UserCategory  = 'external' | 'internal' | 'admin';
-import type { IRole, IDepartment, IDesignation } 
+import type { IRole, IDepartment, IDesignation, ICompanyOrUtility }
   from '../master/master.types';
 
 export interface IUser {
@@ -13,10 +13,12 @@ export interface IUser {
   email: string;
   password: string;
   firstName: string;
+  middleName?: string | null;
   lastName: string;
   phone: string | null;
   avatar: string | null;
   roleId: string;
+  companyId?: string | null;
   departmentId: string;
   designationId: string;
   userCategory: UserCategory;
@@ -36,6 +38,7 @@ export interface IUser {
   createdAt: Date;
   updatedAt: Date;
   role?: IRole;
+  company?: ICompanyOrUtility;
   department?: IDepartment;
   designation?: IDesignation;
 }
@@ -53,6 +56,7 @@ export interface CreateUserDTO {
   phone?: string;
   avatar?: string;
   roleId: string;
+  companyId?: string | null;
   departmentId: string;
   designationId: string;
   userCategory?: UserCategory;
@@ -66,6 +70,7 @@ export interface UpdateUserDTO {
   phone?: string;
   avatar?: string;
   roleId?: string;
+  companyId?: string | null;
   departmentId?: string;
   designationId?: string;
   status?: UserStatus;
@@ -94,6 +99,7 @@ export interface UserFilter {
   status?: UserStatus;
   departmentId?: string;
   roleId?: string;
+  companyId?: string;
   userCategory?: UserCategory;
   // scope injected by middleware
   departmentFilter?: string;
@@ -107,6 +113,7 @@ export interface UpdateUserInput {
   phone?: string;
   avatar?: string;
   roleId?: string;
+  companyId?: string | null;
   departmentId?: string;
   designationId?: string;
   status?: 'active' | 'inactive' | 'suspended';

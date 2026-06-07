@@ -3,6 +3,7 @@ import type { ConnectionPool, IResult } from 'mssql';
 import { IUserDAL } from '../interfaces/user.dal.interface';
 import { IUser, CreateUserDTO, UpdateUserDTO, UserFilter } from '../../modules/user/user.types';
 import { PaginatedResult } from '@prasad-rtns/shared';
+import { parsePermissions } from '../common/rbms.mapper';
 
 /**
  * MssqlUserDAL — SQL Server implementation of IUserDAL.
@@ -15,18 +16,20 @@ export class MssqlUserDAL implements IUserDAL {
   async findById(id: string): Promise<IUser | null> {
     const r = await this.pool.request()
       .input('id', id)
-      .query<IUser>('SELECT * FROM users WHERE id = @id AND status != \'deleted\'');
-    return r.recordset[0] ?? null;
+      .query<Record<string, unknown>>('SELECT * FROM users WHERE id = @id');
+    return r.recordset[0] ? this._mapRow(r.recordset[0]) : null;
   }
 
   async findByIdWithRelations(id: string): Promise<IUser | null> {
     const r = await this.pool.request().input('id', id).query<IUser>(`
       SELECT u.*,
              r.id AS role_id, r.name AS role_name, r.slug AS role_slug, r.permissions AS role_permissions,
+             c.id AS company_ref_id, c.name AS company_name, c.code AS company_code, c.type AS company_type,
              d.id AS dept_id, d.name AS dept_name, d.code AS dept_code,
              de.id AS desig_id, de.name AS desig_name, de.code AS desig_code
       FROM   users u
       LEFT JOIN roles        r  ON r.id  = u.role_id
+      LEFT JOIN company_or_utilities c ON c.id = u.company_id
       LEFT JOIN departments  d  ON d.id  = u.department_id
       LEFT JOIN designations de ON de.id = u.designation_id
       WHERE  u.id = @id
@@ -37,22 +40,22 @@ export class MssqlUserDAL implements IUserDAL {
 
   async findByEmail(email: string): Promise<IUser | null> {
     const r = await this.pool.request().input('email', email.toLowerCase())
-      .query<IUser>('SELECT * FROM users WHERE email = @email');
-    return r.recordset[0] ?? null;
+      .query<Record<string, unknown>>('SELECT * FROM users WHERE email = @email');
+    return r.recordset[0] ? this._mapRow(r.recordset[0]) : null;
   }
 
   async findByUsername(username: string): Promise<IUser | null> {
     const r = await this.pool.request().input('username', username)
-      .query<IUser>('SELECT * FROM users WHERE username = @username');
-    return r.recordset[0] ?? null;
+      .query<Record<string, unknown>>('SELECT * FROM users WHERE username = @username');
+    return r.recordset[0] ? this._mapRow(r.recordset[0]) : null;
   }
 
   async findByEmailOrUsername(identifier: string): Promise<IUser | null> {
     const r = await this.pool.request()
       .input('email', identifier.toLowerCase())
       .input('username', identifier)
-      .query<IUser>('SELECT * FROM users WHERE email = @email OR username = @username');
-    return r.recordset[0] ?? null;
+      .query<Record<string, unknown>>('SELECT * FROM users WHERE email = @email OR username = @username');
+    return r.recordset[0] ? this._mapRow(r.recordset[0]) : null;
   }
 
   async findAll(opts: UserFilter): Promise<PaginatedResult<IUser>> {
@@ -61,17 +64,24 @@ export class MssqlUserDAL implements IUserDAL {
 
   async findFiltered(filter: UserFilter): Promise<PaginatedResult<IUser>> {
     const { page = 1, limit = 10, search, sortBy = 'created_at', sortOrder = 'DESC',
-      status, departmentId, roleId, departmentFilter, userFilter } = filter;
+      status, departmentId, roleId, companyId, userCategory, departmentFilter, userFilter } = filter;
     const offset = (page - 1) * limit;
     const req    = this.pool.request().input('offset', offset).input('limit', limit);
+    const countReq = this.pool.request();
 
     const conditions: string[] = [];
-    if (userFilter)                                          { req.input('userId', userFilter); conditions.push('u.id = @userId'); }
-    else if (departmentFilter && departmentFilter !== 'all') { req.input('deptFilter', departmentFilter); conditions.push('u.department_id = @deptFilter'); }
-    if (status)       { req.input('status', status);             conditions.push('u.status = @status'); }
-    if (departmentId) { req.input('deptId',  departmentId);      conditions.push('u.department_id = @deptId'); }
-    if (roleId)       { req.input('roleId',  roleId);            conditions.push('u.role_id = @roleId'); }
-    if (search)       { req.input('search', `%${search}%`);      conditions.push('(u.first_name LIKE @search OR u.last_name LIKE @search OR u.email LIKE @search OR u.username LIKE @search)'); }
+    const addInput = (name: string, value: unknown) => {
+      req.input(name, value as any);
+      countReq.input(name, value as any);
+    };
+    if (userFilter)                                          { addInput('userId', userFilter); conditions.push('u.id = @userId'); }
+    else if (departmentFilter && departmentFilter !== 'all') { addInput('deptFilter', departmentFilter); conditions.push('u.department_id = @deptFilter'); }
+    if (status)       { addInput('status', status);             conditions.push('u.status = @status'); }
+    if (departmentId) { addInput('deptId',  departmentId);      conditions.push('u.department_id = @deptId'); }
+    if (roleId)       { addInput('roleId',  roleId);            conditions.push('u.role_id = @roleId'); }
+    if (companyId)    { addInput('companyId', companyId);       conditions.push('u.company_id = @companyId'); }
+    if (userCategory) { addInput('userCategory', userCategory); conditions.push('u.user_category = @userCategory'); }
+    if (search)       { addInput('search', `%${search}%`);      conditions.push('(u.first_name LIKE @search OR u.last_name LIKE @search OR u.email LIKE @search OR u.username LIKE @search)'); }
 
     const where    = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
     const orderCol = sortBy === 'email' ? 'u.email' : sortBy === 'firstName' ? 'u.first_name' : 'u.created_at';
@@ -79,11 +89,13 @@ export class MssqlUserDAL implements IUserDAL {
 
     const sql = `
       SELECT u.*,
-             r.id AS role_id, r.name AS role_name, r.slug AS role_slug,
+             r.id AS role_id, r.name AS role_name, r.slug AS role_slug, r.permissions AS role_permissions,
+             c.id AS company_ref_id, c.name AS company_name, c.code AS company_code, c.type AS company_type,
              d.id AS dept_id, d.name AS dept_name,
              de.id AS desig_id, de.name AS desig_name
       FROM   users u
       LEFT JOIN roles        r  ON r.id  = u.role_id
+      LEFT JOIN company_or_utilities c ON c.id = u.company_id
       LEFT JOIN departments  d  ON d.id  = u.department_id
       LEFT JOIN designations de ON de.id = u.designation_id
       ${where}
@@ -94,7 +106,7 @@ export class MssqlUserDAL implements IUserDAL {
 
     const [data, count] = await Promise.all([
       req.query<IUser>(sql),
-      this.pool.request().query<{ total: number }>(countSql),
+      countReq.query<{ total: number }>(countSql),
     ]);
 
     return { data: data.recordset.map(r => this._mapRow(r as any)), total: count.recordset[0]?.total ?? 0 };
@@ -106,13 +118,14 @@ export class MssqlUserDAL implements IUserDAL {
     await this.pool.request()
       .input('id', id)
       .input('username', data.username)
-      .input('email', data.email)
+      .input('email', data.email.toLowerCase())
       .input('password', data.password)
       .input('firstName', data.firstName)
       .input('lastName', data.lastName)
       .input('phone', data.phone ?? null)
       .input('avatar', data.avatar ?? null)
       .input('roleId', data.roleId)
+      .input('companyId', data.companyId ?? null)
       .input('departmentId', data.departmentId)
       .input('designationId', data.designationId)
       .input('userCategory', data.userCategory ?? 'internal')
@@ -120,10 +133,10 @@ export class MssqlUserDAL implements IUserDAL {
       .input('now', now)
       .query(`
         INSERT INTO users (id, username, email, password, first_name, last_name, phone, avatar,
-                           role_id, department_id, designation_id, user_category, status, is_email_verified,
+                           role_id, company_id, department_id, designation_id, user_category, status, is_email_verified,
                            failed_login_attempts, two_factor_enabled, created_by, created_at, updated_at)
         VALUES (@id, @username, @email, @password, @firstName, @lastName, @phone, @avatar,
-                @roleId, @departmentId, @designationId, @userCategory, 'active', 0, 0, 0, @createdBy, @now, @now)
+                @roleId, @companyId, @departmentId, @designationId, @userCategory, 'active', 0, 0, 0, @createdBy, @now, @now)
       `);
     const user = await this.findById(id);
     return user!;
@@ -133,9 +146,11 @@ export class MssqlUserDAL implements IUserDAL {
     const updates: string[] = [];
     const req = this.pool.request().input('id', id).input('updatedAt', new Date());
     const fieldMap: Record<string, string> = {
-      firstName: 'first_name', lastName: 'last_name', phone: 'phone', avatar: 'avatar',
-      roleId: 'role_id', departmentId: 'department_id', designationId: 'designation_id',
+      firstName: 'first_name', middleName: 'middle_name', lastName: 'last_name', phone: 'phone', avatar: 'avatar',
+      roleId: 'role_id', companyId: 'company_id', departmentId: 'department_id', designationId: 'designation_id',
       status: 'status', password: 'password', isEmailVerified: 'is_email_verified',
+      emailVerificationToken: 'email_verification_token', passwordResetToken: 'password_reset_token',
+      passwordResetExpires: 'password_reset_expires',
       failedLoginAttempts: 'failed_login_attempts', lockUntil: 'lock_until',
       lastLoginAt: 'last_login_at', lastLoginIp: 'last_login_ip', updatedBy: 'updated_by',
     };
@@ -198,6 +213,9 @@ export class MssqlUserDAL implements IUserDAL {
     else if (filter.departmentFilter && filter.departmentFilter !== 'all') { req.input('deptFilter', filter.departmentFilter); conditions.push('department_id = @deptFilter'); }
     if (filter.status)       { req.input('status', filter.status);      conditions.push('status = @status'); }
     if (filter.departmentId) { req.input('deptId', filter.departmentId);conditions.push('department_id = @deptId'); }
+    if (filter.roleId)       { req.input('roleId', filter.roleId);      conditions.push('role_id = @roleId'); }
+    if (filter.companyId)    { req.input('companyId', filter.companyId);conditions.push('company_id = @companyId'); }
+    if (filter.userCategory) { req.input('userCategory', filter.userCategory); conditions.push('user_category = @userCategory'); }
     const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
     const r = await req.query<{ total: number }>(`SELECT COUNT(*) AS total FROM users ${where}`);
     return r.recordset[0]?.total ?? 0;
@@ -211,10 +229,12 @@ export class MssqlUserDAL implements IUserDAL {
       email:                  row.email as string,
       password:               row.password as string,
       firstName:              (row.first_name ?? row.firstName) as string,
+      middleName:             (row.middle_name ?? row.middleName ?? null) as string | null,
       lastName:               (row.last_name  ?? row.lastName)  as string,
       phone:                  (row.phone ?? null) as string | null,
       avatar:                 (row.avatar ?? null) as string | null,
       roleId:                 (row.role_id ?? row.roleId) as string,
+      companyId:              (row.company_id ?? row.companyId ?? null) as string | null,
       departmentId:           (row.department_id ?? row.departmentId) as string,
       designationId:          (row.designation_id ?? row.designationId) as string,
       userCategory:           (row.user_category ?? row.userCategory ?? 'internal') as IUser['userCategory'],
@@ -233,7 +253,8 @@ export class MssqlUserDAL implements IUserDAL {
       updatedBy:              (row.updated_by ?? null) as string | null,
       createdAt:              row.created_at as Date,
       updatedAt:              row.updated_at as Date,
-      role:        row.role_slug ? { id: row.role_id, slug: row.role_slug, name: row.role_name, permissions: [] } as unknown as IUser['role'] : undefined,
+      role:        row.role_slug ? { id: row.role_id, slug: row.role_slug, name: row.role_name, permissions: parsePermissions(row.role_permissions) } as unknown as IUser['role'] : undefined,
+      company:     row.company_name ? { id: row.company_ref_id, name: row.company_name, code: row.company_code, type: row.company_type } as unknown as IUser['company'] : undefined,
       department:  row.dept_name ? { id: row.dept_id, name: row.dept_name } as unknown as IUser['department'] : undefined,
       designation: row.desig_name ? { id: row.desig_id, name: row.desig_name } as unknown as IUser['designation'] : undefined,
     };

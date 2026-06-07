@@ -1,55 +1,187 @@
 'use client';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import type React from 'react';
+import { useMemo, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import {
-  Globe, Map, Building2, Tag, Hash, FileText, Layers, Settings,
-  Users, UserCheck, UserCog, LayoutDashboard, LogOut, ChevronDown, ChevronRight,
+  BadgeCheck,
+  Building2,
+  ChevronDown,
+  ChevronRight,
+  Database,
+  FileText,
+  FolderTree,
+  Globe,
+  Hash,
+  Layers,
+  LayoutDashboard,
+  LogOut,
+  Map as MapIcon,
+  MenuSquare,
+  Settings,
+  ShieldCheck,
+  Tag,
+  UserCheck,
+  UserCog,
+  Users,
 } from 'lucide-react';
-import { useState } from 'react';
 import { useAuth } from '@/hooks/use-auth';
-import { useSchemaCatalogue } from '@/hooks/use-schema';
+import { authApi } from '@/lib/api';
 import { cn } from '@/lib/utils';
+import type { IModuleMenu } from '@/types';
 
 const ICON_MAP: Record<string, React.ElementType> = {
-  globe: Globe, map: Map, building: Building2, tag: Tag, hash: Hash,
-  'file-text': FileText, layers: Layers, settings: Settings,
+  badge: BadgeCheck,
+  badgecheck: BadgeCheck,
+  building: Building2,
+  building2: Building2,
+  database: Database,
+  filetext: FileText,
+  'file-text': FileText,
+  foldertree: FolderTree,
+  'folder-tree': FolderTree,
+  globe: Globe,
+  hash: Hash,
+  layers: Layers,
+  layoutdashboard: LayoutDashboard,
+  'layout-dashboard': LayoutDashboard,
+  map: MapIcon,
+  menu: MenuSquare,
+  menusquare: MenuSquare,
+  'menu-square': MenuSquare,
+  settings: Settings,
+  shield: ShieldCheck,
+  shieldcheck: ShieldCheck,
+  'shield-check': ShieldCheck,
+  tag: Tag,
+  usercheck: UserCheck,
+  'user-check': UserCheck,
+  usercog: UserCog,
+  'user-cog': UserCog,
+  users: Users,
 };
 
-const MASTER_ENTITY_ORDER = ['countries','states','cities','categories','tags','document-types','service-types','settings'];
+interface ModuleNode extends IModuleMenu {
+  children: ModuleNode[];
+}
 
-const USER_NAV = [
-  { label: 'External Users', href: '/users/external', icon: Users, roles: ['super_admin','admin'] },
-  { label: 'Internal Users', href: '/users/internal', icon: UserCheck, roles: ['super_admin','admin'] },
-  { label: 'Admin Users',    href: '/users/admin',    icon: UserCog,  roles: ['super_admin'] },
-];
+function iconFor(icon?: string | null) {
+  if (!icon) return Layers;
+  return ICON_MAP[icon.replace(/\s+/g, '').toLowerCase()] ?? Layers;
+}
+
+function sortModules<T extends IModuleMenu>(items: T[]) {
+  return [...items].sort((a, b) => (a.sortOrder - b.sortOrder) || a.name.localeCompare(b.name));
+}
+
+function buildTree(modules: IModuleMenu[]): ModuleNode[] {
+  const nodes = new Map<string, ModuleNode>();
+  sortModules(modules).forEach((module) => nodes.set(module.id, { ...module, children: [] }));
+
+  const roots: ModuleNode[] = [];
+  nodes.forEach((node) => {
+    const parent = node.parentId ? nodes.get(node.parentId) : undefined;
+    if (parent) parent.children.push(node);
+    else roots.push(node);
+  });
+
+  nodes.forEach((node) => {
+    node.children = sortModules(node.children);
+  });
+  return sortModules(roots);
+}
+
+function moduleRoute(module: IModuleMenu) {
+  return module.route && module.route !== '#' ? module.route : '';
+}
+
+function nodeContainsPath(module: ModuleNode, pathname: string): boolean {
+  const href = moduleRoute(module);
+  if (href && (pathname === href || pathname.startsWith(`${href}/`))) return true;
+  return module.children.some((child) => nodeContainsPath(child, pathname));
+}
 
 export function Sidebar() {
   const pathname = usePathname();
-  const { user, logout } = useAuth();
-  const { data: schema } = useSchemaCatalogue();
-  const [masterOpen, setMasterOpen] = useState(true);
-  const [usersOpen, setUsersOpen]   = useState(false);
+  const { user, logout, canAny } = useAuth();
+  const [open, setOpen] = useState<Record<string, boolean>>({});
 
-  const role = user?.role?.slug ?? '';
-
-  const masterItems = MASTER_ENTITY_ORDER.flatMap((key) => {
-    const meta = schema?.[key];
-    if (!meta) return [];
-    return [{ key, meta }];
+  const { data: modules = [] } = useQuery<IModuleMenu[]>({
+    queryKey: ['sidebar', 'modules'],
+    queryFn: async () => (await authApi.get('/auth/master/modules')).data.data,
+    staleTime: 5 * 60 * 1000,
   });
 
-  const userItems = USER_NAV.filter((n) => n.roles.includes(role));
+  const visibleTree = useMemo(() => {
+    function filterNode(node: ModuleNode): ModuleNode | null {
+      const visibleChildren = node.children.flatMap((child) => {
+        const visible = filterNode(child);
+        return visible ? [visible] : [];
+      });
+      const selfVisible = (node.permissions?.length ?? 0) === 0 || canAny(node.permissions);
+      if (!selfVisible && visibleChildren.length === 0) return null;
+      return { ...node, children: visibleChildren };
+    }
 
-  function NavItem({ href, icon: Icon, label }: { href: string; icon: React.ElementType; label: string }) {
-    const active = pathname === href || pathname.startsWith(href + '/');
+    return buildTree(modules.filter((module) => module.isActive !== false))
+      .flatMap((node) => {
+        const visible = filterNode(node);
+        return visible ? [visible] : [];
+      });
+  }, [canAny, modules]);
+
+  function NavLink({ module, depth = 0 }: { module: ModuleNode; depth?: number }) {
+    const href = moduleRoute(module);
+    const Icon = iconFor(module.icon);
+    const active = href ? pathname === href || pathname.startsWith(`${href}/`) : false;
+    const padding = depth === 0 ? 'px-3' : depth === 1 ? 'pl-8 pr-3' : 'pl-12 pr-3';
+
     return (
-      <Link href={href} className={cn(
-        'flex items-center gap-2.5 px-3 py-2 rounded-md text-sm transition-colors',
+      <Link href={href || '#'} className={cn(
+        'flex items-center gap-2.5 py-2 rounded-md text-sm transition-colors',
+        padding,
         active ? 'bg-sidebar-primary text-sidebar-primary-foreground' : 'text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
       )}>
         <Icon className="h-4 w-4 shrink-0" />
-        <span className="truncate">{label}</span>
+        <span className="truncate">{module.name}</span>
       </Link>
+    );
+  }
+
+  function NavNode({ module, depth = 0 }: { module: ModuleNode; depth?: number }) {
+    const hasChildren = module.children.length > 0;
+    const href = moduleRoute(module);
+    const Icon = iconFor(module.icon);
+    const expanded = open[module.id] ?? nodeContainsPath(module, pathname);
+    const active = href ? pathname === href || pathname.startsWith(`${href}/`) : false;
+    const padding = depth === 0 ? 'px-3' : depth === 1 ? 'pl-8 pr-3' : 'pl-12 pr-3';
+
+    if (!hasChildren) return <NavLink module={module} depth={depth} />;
+
+    return (
+      <div>
+        <button
+          type="button"
+          onClick={() => setOpen((current) => ({ ...current, [module.id]: !expanded }))}
+          className={cn(
+            'flex w-full items-center justify-between gap-2 py-2 rounded-md text-sm transition-colors',
+            padding,
+            active ? 'bg-sidebar-primary text-sidebar-primary-foreground' : 'text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
+          )}
+        >
+          <span className="flex min-w-0 items-center gap-2.5">
+            <Icon className="h-4 w-4 shrink-0" />
+            <span className="truncate">{module.name}</span>
+          </span>
+          {expanded ? <ChevronDown className="h-3.5 w-3.5 shrink-0" /> : <ChevronRight className="h-3.5 w-3.5 shrink-0" />}
+        </button>
+        {expanded && (
+          <div className="mt-1 space-y-1">
+            {module.children.map((child) => <NavNode key={child.id} module={child} depth={depth + 1} />)}
+          </div>
+        )}
+      </div>
     );
   }
 
@@ -61,42 +193,12 @@ export function Sidebar() {
       </div>
 
       <nav className="flex-1 px-2 py-4 space-y-1">
-        <NavItem href="/dashboard" icon={LayoutDashboard} label="Dashboard" />
-
-        {/* Master Data section */}
-        {masterItems.length > 0 && (
-          <div>
-            <button
-              onClick={() => setMasterOpen((v) => !v)}
-              className="flex items-center justify-between w-full px-3 py-2 text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/50 hover:text-sidebar-foreground"
-            >
-              Master Data
-              {masterOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
-            </button>
-            {masterOpen && masterItems.map(({ key, meta }) => {
-              const Icon = ICON_MAP[meta.icon] ?? Layers;
-              return <NavItem key={key} href={`/master/${key}`} icon={Icon} label={meta.pluralLabel} />;
-            })}
-          </div>
-        )}
-
-        {/* Users section */}
-        {userItems.length > 0 && (
-          <div>
-            <button
-              onClick={() => setUsersOpen((v) => !v)}
-              className="flex items-center justify-between w-full px-3 py-2 text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/50 hover:text-sidebar-foreground"
-            >
-              Users
-              {usersOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
-            </button>
-            {usersOpen && userItems.map((n) => <NavItem key={n.href} href={n.href} icon={n.icon} label={n.label} />)}
-          </div>
-        )}
+        {visibleTree.map((module) => <NavNode key={module.id} module={module} />)}
       </nav>
 
       <div className="px-2 py-3 border-t border-sidebar-border">
         <button
+          type="button"
           onClick={() => logout()}
           className="flex items-center gap-2.5 w-full px-3 py-2 rounded-md text-sm text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
         >

@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { CacheService, JwtPayload, JwtUtil, ResponseUtil } from '@prasad-rtns/shared';
 import { DatabaseType } from '@prasad-rtns/shared';
 import { AuthProviderService } from '../modules/auth/auth-provider.service';
+import { DALFactory } from '../dal/dal.factory';
 
 const tokenCache = new CacheService('auth');
 
@@ -84,6 +85,56 @@ export const authorize = (...roles: JwtPayload['role'][]) => {
       ResponseUtil.forbidden(res, `Access denied. Required roles: ${roles.join(', ')}`);
       return;
     }
+    next();
+  };
+};
+
+const normalizePermission = (value: string) => value.trim().toLowerCase().replace(/[\s_]+/g, '-');
+
+const permissionList = (permissions: unknown): string[] => {
+  if (Array.isArray(permissions)) return permissions.map(String).filter(Boolean);
+  if (permissions && typeof permissions === 'object') {
+    return Object.entries(permissions as Record<string, unknown>).flatMap(([resource, actions]) =>
+      Array.isArray(actions) ? actions.map((action) => `${resource}:${String(action)}`) : [],
+    );
+  }
+  return [];
+};
+
+const permissionMatches = (actual: string, required: string): boolean => {
+  const [actualResource = '', actualAction = ''] = normalizePermission(actual).split(':');
+  const [requiredResource = '', requiredAction = ''] = normalizePermission(required).split(':');
+
+  if (!actualResource || !requiredResource) return false;
+  if (actualResource === '*' || normalizePermission(actual) === '*') return true;
+  if (actualResource !== requiredResource) return false;
+  return actualAction === '*' || actualAction === requiredAction;
+};
+
+const isElevatedRole = (role?: string) => ['admin', 'super-admin', 'super_admin', 'super-user', 'super_user'].includes(role ?? '');
+
+export const requireAnyPermission = (...required: string[]) => {
+  return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    if (!req.user) {
+      ResponseUtil.unauthorized(res);
+      return;
+    }
+
+    if (isElevatedRole(req.user.role)) {
+      next();
+      return;
+    }
+
+    const dal = await DALFactory.get(dbType(req));
+    const user = await dal.user.findByIdWithRelations(req.user.sub);
+    const permissions = permissionList(user?.role?.permissions);
+    const allowed = required.some((needed) => permissions.some((actual) => permissionMatches(actual, needed)));
+
+    if (!allowed) {
+      ResponseUtil.forbidden(res, `Access denied. Required permissions: ${required.join(', ')}`);
+      return;
+    }
+
     next();
   };
 };

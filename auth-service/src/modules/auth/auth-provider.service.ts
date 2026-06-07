@@ -140,6 +140,7 @@ export class AuthProviderService {
       lastName: input.lastName,
       phone: input.phone,
       roleId: input.roleId || WSO2_DEFAULT_ROLE_ID,
+      companyId: input.companyId ?? null,
       departmentId: input.departmentId || WSO2_DEFAULT_DEPARTMENT_ID,
       designationId: input.designationId || WSO2_DEFAULT_DESIGNATION_ID,
       createdBy: 'wso2',

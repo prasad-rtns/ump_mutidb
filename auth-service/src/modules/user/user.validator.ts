@@ -5,6 +5,7 @@ export const updateUserValidator = [
   body('lastName').optional().trim().isLength({ min: 1, max: 100 }),
   body('phone').optional().isMobilePhone('any').withMessage('Invalid phone number'),
   body('roleId').optional().isUUID(),
+  body('companyId').optional({ nullable: true, checkFalsy: true }).isUUID(),
   body('departmentId').optional().isUUID(),
   body('designationId').optional().isUUID(),
   body('status').optional().isIn(['active', 'inactive', 'suspended']).withMessage('Invalid status'),

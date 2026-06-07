@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { validationResult } from 'express-validator';
-import { RoleService, DepartmentService, DesignationService } from './master.service';
+import { RoleService, CompanyOrUtilityService, DepartmentService, DesignationService, ModuleMenuService } from './master.service';
 import { ResponseUtil } from '@prasad-rtns/shared';
 import { DatabaseType } from '@prasad-rtns/shared';
 
@@ -35,6 +35,29 @@ export class RoleController {
     const svc    = await RoleService.create(dbType(req));
     const result = await svc.deleteRole(req.params.id);
     return ResponseUtil.success(res, result);
+  }
+}
+
+export class CompanyOrUtilityController {
+  static async list(req: Request, res: Response) {
+    const svc = await CompanyOrUtilityService.create(dbType(req));
+    return ResponseUtil.success(res, await svc.list(req.query.activeOnly !== 'false'));
+  }
+  static async getById(req: Request, res: Response) {
+    const svc = await CompanyOrUtilityService.create(dbType(req));
+    return ResponseUtil.success(res, await svc.getById(req.params.id));
+  }
+  static async create(req: Request, res: Response) {
+    const svc = await CompanyOrUtilityService.create(dbType(req));
+    return ResponseUtil.created(res, await svc.createCompany(req.body));
+  }
+  static async update(req: Request, res: Response) {
+    const svc = await CompanyOrUtilityService.create(dbType(req));
+    return ResponseUtil.success(res, await svc.updateCompany(req.params.id, req.body));
+  }
+  static async remove(req: Request, res: Response) {
+    const svc = await CompanyOrUtilityService.create(dbType(req));
+    return ResponseUtil.success(res, await svc.deleteCompany(req.params.id));
   }
 }
 
@@ -97,5 +120,32 @@ export class DesignationController {
     const svc    = await DesignationService.create(dbType(req));
     const result = await svc.deleteDesignation(req.params.id);
     return ResponseUtil.success(res, result);
+  }
+}
+
+export class ModuleMenuController {
+  static async list(req: Request, res: Response) {
+    const svc = await ModuleMenuService.create(dbType(req));
+    return ResponseUtil.success(res, await svc.list(req.query.activeOnly !== 'false'));
+  }
+  static async getById(req: Request, res: Response) {
+    const svc = await ModuleMenuService.create(dbType(req));
+    return ResponseUtil.success(res, await svc.getById(req.params.id));
+  }
+  static async create(req: Request, res: Response) {
+    const svc = await ModuleMenuService.create(dbType(req));
+    return ResponseUtil.created(res, await svc.createModule(req.body));
+  }
+  static async update(req: Request, res: Response) {
+    const svc = await ModuleMenuService.create(dbType(req));
+    return ResponseUtil.success(res, await svc.updateModule(req.params.id, req.body));
+  }
+  static async remove(req: Request, res: Response) {
+    const svc = await ModuleMenuService.create(dbType(req));
+    return ResponseUtil.success(res, await svc.deleteModule(req.params.id));
+  }
+  static async permissions(req: Request, res: Response) {
+    const svc = await ModuleMenuService.create(dbType(req));
+    return ResponseUtil.success(res, await svc.permissionsCatalogue());
   }
 }

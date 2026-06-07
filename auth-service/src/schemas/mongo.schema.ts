@@ -10,7 +10,7 @@ export interface MongoRole {
   _id?: ObjectId;
   id: string;
   name: string;
-  slug: 'admin' | 'lead' | 'user';
+  slug: string;
   description?: string;
   permissions: string[];
   isActive: boolean;
@@ -25,6 +25,18 @@ export interface MongoDepartment {
   code: string;
   parentId?: string;
   managerId?: string;
+  description?: string;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface MongoCompanyOrUtility {
+  _id?: ObjectId;
+  id: string;
+  name: string;
+  code: string;
+  type: 'company' | 'utility';
   description?: string;
   isActive: boolean;
   createdAt: Date;
@@ -51,25 +63,43 @@ export interface MongoUser {
   email: string;
   password: string;
   firstName: string;
+  middleName?: string | null;
   lastName: string;
-  phone?: string;
-  avatar?: string;
+  phone?: string | null;
+  avatar?: string | null;
   roleId: string;
+  companyId?: string | null;
   departmentId: string;
   designationId: string;
+  userCategory: 'external' | 'internal' | 'admin';
   status: 'active' | 'inactive' | 'suspended';
   isEmailVerified: boolean;
-  emailVerificationToken?: string;
-  passwordResetToken?: string;
-  passwordResetExpires?: Date;
+  emailVerificationToken?: string | null;
+  passwordResetToken?: string | null;
+  passwordResetExpires?: Date | null;
   failedLoginAttempts: number;
-  lockUntil?: Date;
-  twoFactorSecret?: string;
+  lockUntil?: Date | null;
+  twoFactorSecret?: string | null;
   twoFactorEnabled: boolean;
-  lastLoginAt?: Date;
-  lastLoginIp?: string;
-  createdBy?: string;
-  updatedBy?: string;
+  lastLoginAt?: Date | null;
+  lastLoginIp?: string | null;
+  createdBy?: string | null;
+  updatedBy?: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface MongoModuleMenu {
+  _id?: ObjectId;
+  id: string;
+  name: string;
+  code: string;
+  route?: string;
+  icon?: string;
+  parentId?: string;
+  sortOrder: number;
+  permissions: string[];
+  isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -113,8 +143,16 @@ export class MongoCollections {
     return this.db.collection<MongoDepartment>('departments');
   }
 
+  get companies(): Collection<MongoCompanyOrUtility> {
+    return this.db.collection<MongoCompanyOrUtility>('company_or_utilities');
+  }
+
   get designations(): Collection<MongoDesignation> {
     return this.db.collection<MongoDesignation>('designations');
+  }
+
+  get moduleMenus(): Collection<MongoModuleMenu> {
+    return this.db.collection<MongoModuleMenu>('module_menus');
   }
 
   get users(): Collection<MongoUser> {
@@ -135,7 +173,9 @@ export class MongoCollections {
       { key: { email: 1 }, unique: true },
       { key: { username: 1 }, unique: true },
       { key: { roleId: 1 } },
+      { key: { companyId: 1 } },
       { key: { departmentId: 1 } },
+      { key: { userCategory: 1 } },
       { key: { status: 1 } },
     ]);
 
@@ -147,9 +187,21 @@ export class MongoCollections {
       { key: { code: 1 }, unique: true },
     ]);
 
+    await this.companies.createIndexes([
+      { key: { code: 1 }, unique: true },
+      { key: { type: 1 } },
+      { key: { isActive: 1 } },
+    ]);
+
     await this.designations.createIndexes([
       { key: { code: 1 }, unique: true },
       { key: { departmentId: 1 } },
+    ]);
+
+    await this.moduleMenus.createIndexes([
+      { key: { code: 1 }, unique: true },
+      { key: { parentId: 1 } },
+      { key: { isActive: 1 } },
     ]);
 
     await this.sessions.createIndexes([

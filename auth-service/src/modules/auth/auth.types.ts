@@ -8,6 +8,7 @@ export interface RegisterInput {
   lastName: string;
   phone?: string;
   roleId: string;
+  companyId?: string | null;
   departmentId: string;
   designationId: string;
 }

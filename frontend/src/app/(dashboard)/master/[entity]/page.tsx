@@ -1,12 +1,11 @@
 'use client';
-import { use } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { masterApi } from '@/lib/api';
 import { useEntitySchema } from '@/hooks/use-schema';
 import { EntityPage } from '@/components/entity-page/entity-page';
 import type { ICountry, IState } from '@/types';
 
-interface Props { params: Promise<{ entity: string }> }
+interface Props { params: { entity: string } }
 
 // Build select options for FK fields (states need countries, cities need states, etc.)
 function useSelectOptions(entity: string) {
@@ -38,7 +37,7 @@ function useSelectOptions(entity: string) {
 }
 
 export default function MasterEntityPage({ params }: Props) {
-  const { entity } = use(params);
+  const { entity } = params;
   const selectOptions = useSelectOptions(entity);
   const { data: schema } = useEntitySchema(entity);
 

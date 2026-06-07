@@ -14,13 +14,18 @@ interface Props {
 
 const PAGE_SIZE = 20;
 
+function masterProxyPath(apiEndpoint: string) {
+  return apiEndpoint.replace('/api/v1', '');
+}
+
 export function EntityPage({ entity, selectOptions = {} }: Props) {
   const qc = useQueryClient();
-  const { user } = useAuth();
+  const { canAny } = useAuth();
   const [page, setPage]     = useState(1);
   const [search, setSearch] = useState('');
 
   const { data: schema, isLoading: schemaLoading } = useEntitySchema(entity);
+  const canRead = canAny([`${entity}:read`, 'master:*', `${entity}:*`, 'system:*', 'utility-management:*']);
 
   const { data: listData, isLoading: dataLoading } = useQuery({
     queryKey: ['master', entity, page, search],
@@ -28,18 +33,18 @@ export function EntityPage({ entity, selectOptions = {} }: Props) {
       const params = new URLSearchParams({ page: String(page), limit: String(PAGE_SIZE) });
       if (search) params.set('search', search);
       const endpoint = schema?.apiEndpoint || `/api/v1/master/${entity}`;
-      const { data } = await masterApi.get(`${endpoint.replace('/api/v1/master', '')}?${params}`);
+      const { data } = await masterApi.get(`${masterProxyPath(endpoint)}?${params}`);
       const payload = data.data;
       // Support both array and paginated response
       if (Array.isArray(payload)) return { data: payload, total: payload.length };
       return { data: payload.data ?? [], total: payload.total ?? 0 };
     },
-    enabled: !!schema,
+    enabled: !!schema && canRead,
   });
 
-  const createMut  = useMutation({ mutationFn: (body: Record<string,unknown>) => masterApi.post(schema!.apiEndpoint.replace('/api/v1/master',''), body) });
-  const updateMut  = useMutation({ mutationFn: ({ id, body }: { id:string; body:Record<string,unknown> }) => masterApi.put(`${schema!.apiEndpoint.replace('/api/v1/master','')}/${id}`, body) });
-  const deleteMut  = useMutation({ mutationFn: (id: string) => masterApi.delete(`${schema!.apiEndpoint.replace('/api/v1/master','')}/${id}`) });
+  const createMut  = useMutation({ mutationFn: (body: Record<string,unknown>) => masterApi.post(masterProxyPath(schema!.apiEndpoint), body) });
+  const updateMut  = useMutation({ mutationFn: ({ id, body }: { id:string; body:Record<string,unknown> }) => masterApi.put(`${masterProxyPath(schema!.apiEndpoint)}/${id}`, body) });
+  const deleteMut  = useMutation({ mutationFn: (id: string) => masterApi.delete(`${masterProxyPath(schema!.apiEndpoint)}/${id}`) });
 
   function invalidate() { qc.invalidateQueries({ queryKey: ['master', entity] }); }
 
@@ -58,11 +63,11 @@ export function EntityPage({ entity, selectOptions = {} }: Props) {
 
   if (schemaLoading) return <div className="p-8 text-center text-muted-foreground">Loading schema…</div>;
   if (!schema) return <div className="p-8 text-center text-muted-foreground">Entity not found.</div>;
+  if (!canRead) return <div className="rounded-md border bg-card p-6 text-sm text-muted-foreground">You do not have permission to view {schema.pluralLabel.toLowerCase()}.</div>;
 
-  const userRole = user?.role?.slug ?? '';
-  const canCreate = schema.permissions.create.includes(userRole);
-  const canUpdate = schema.permissions.update.includes(userRole);
-  const canDelete = schema.permissions.delete.includes(userRole);
+  const canCreate = canAny([`${entity}:create`, 'master:*', `${entity}:*`, 'system:create', 'utility-management:create']);
+  const canUpdate = canAny([`${entity}:update`, `${entity}:edit-all`, `${entity}:edit-own`, 'master:*', `${entity}:*`, 'system:update', 'system:edit-all', 'system:edit-own', 'utility-management:update', 'utility-management:edit-all', 'utility-management:edit-own']);
+  const canDelete = canAny([`${entity}:delete`, `${entity}:delete-all`, `${entity}:delete-own`, 'master:*', `${entity}:*`, 'system:delete-all', 'system:delete-own', 'utility-management:delete-all', 'utility-management:delete-own']);
 
   return (
     <DataTable

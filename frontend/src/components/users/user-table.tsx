@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { DynamicForm } from '@/components/dynamic-form/dynamic-form';
-import type { IUser, IDepartment, IRole, IDesignation, UserCategory, FieldMeta } from '@/types';
+import type { IUser, IDepartment, IRole, IDesignation, ICompanyOrUtility, UserCategory, FieldMeta } from '@/types';
 
 const USER_FIELDS: FieldMeta[] = [
   { name: 'firstName',    label: 'First Name',   type: 'text',    required: true  },
@@ -19,6 +19,7 @@ const USER_FIELDS: FieldMeta[] = [
   { name: 'password',     label: 'Password',     type: 'text',    required: true  },
   { name: 'phone',        label: 'Phone',        type: 'text'                     },
   { name: 'roleId',       label: 'Role',         type: 'select',  required: true  },
+  { name: 'companyId',    label: 'Company / Utility', type: 'select'              },
   { name: 'departmentId', label: 'Department',   type: 'select',  required: true  },
   { name: 'designationId',label: 'Designation',  type: 'select',  required: true  },
   { name: 'status',       label: 'Status',       type: 'select',  default: 'active',
@@ -30,6 +31,26 @@ const UPDATE_FIELDS: FieldMeta[] = USER_FIELDS.filter((f) => !['username','email
 interface Props { category: UserCategory; title: string }
 
 const PAGE_SIZE = 20;
+const CATEGORY_PERMISSIONS: Record<UserCategory, { read: string[]; create: string[]; update: string[]; delete: string[] }> = {
+  external: {
+    read: ['users:*', 'users:read', 'external-users:*', 'external-users:read'],
+    create: ['users:*', 'users:create', 'external-users:*', 'external-users:create'],
+    update: ['users:*', 'users:update', 'external-users:*', 'external-users:update'],
+    delete: ['users:*', 'users:delete', 'external-users:*', 'external-users:delete'],
+  },
+  internal: {
+    read: ['users:*', 'users:read', 'internal-users:*', 'internal-users:read'],
+    create: ['users:*', 'users:create', 'internal-users:*', 'internal-users:create'],
+    update: ['users:*', 'users:update', 'internal-users:*', 'internal-users:update'],
+    delete: ['users:*', 'users:delete', 'internal-users:*', 'internal-users:delete'],
+  },
+  admin: {
+    read: ['users:*', 'admin-users:*', 'admin-users:read'],
+    create: ['users:*', 'admin-users:*', 'admin-users:create'],
+    update: ['users:*', 'admin-users:*', 'admin-users:update'],
+    delete: ['users:*', 'admin-users:*', 'admin-users:delete'],
+  },
+};
 
 function statusVariant(status: string) {
   if (status === 'active')    return 'success' as const;
@@ -39,16 +60,21 @@ function statusVariant(status: string) {
 
 export function UserTable({ category, title }: Props) {
   const qc = useQueryClient();
-  const { user: me } = useAuth();
+  const { canAny } = useAuth();
   const [page, setPage]       = useState(1);
   const [search, setSearch]   = useState('');
   const [showCreate, setShowCreate] = useState(false);
   const [editUser, setEditUser]     = useState<IUser | null>(null);
   const [saving, setSaving]         = useState(false);
+  const permissionSet = CATEGORY_PERMISSIONS[category];
 
-  const canManage = ['super_admin','admin'].includes(me?.role?.slug ?? '');
+  const canRead = canAny(permissionSet.read);
+  const canCreate = canAny(permissionSet.create);
+  const canUpdate = canAny(permissionSet.update);
+  const canDelete = canAny(permissionSet.delete);
 
   const { data: roles }       = useQuery<IRole[]>({ queryKey: ['roles'],       queryFn: async () => (await authApi.get('/auth/master/roles')).data.data });
+  const { data: companies }   = useQuery<ICompanyOrUtility[]>({ queryKey: ['companies'], queryFn: async () => (await authApi.get('/auth/master/companies')).data.data });
   const { data: departments } = useQuery<IDepartment[]>({ queryKey: ['departments'], queryFn: async () => (await authApi.get('/auth/master/departments')).data.data });
   const { data: designations } = useQuery<IDesignation[]>({ queryKey: ['designations'], queryFn: async () => (await authApi.get('/auth/master/designations')).data.data });
 
@@ -62,6 +88,7 @@ export function UserTable({ category, title }: Props) {
       if (Array.isArray(payload)) return { users: payload as IUser[], total: payload.length };
       return { users: (payload.data ?? []) as IUser[], total: payload.total ?? 0 };
     },
+    enabled: canRead,
   });
 
   const createMut = useMutation({ mutationFn: (body: Record<string,unknown>) => authApi.post('/auth/register', { ...body, userCategory: category }) });
@@ -97,11 +124,16 @@ export function UserTable({ category, title }: Props) {
 
   const selectOptions = {
     roleId:        roles?.map((r)       => ({ value: r.id, label: r.name })) ?? [],
+    companyId:     companies?.map((c)   => ({ value: c.id, label: `${c.name} (${c.type})` })) ?? [],
     departmentId:  departments?.map((d) => ({ value: d.id, label: d.name })) ?? [],
     designationId: designations?.map((d)=> ({ value: d.id, label: d.name })) ?? [],
   };
 
   const totalPages = Math.ceil((data?.total ?? 0) / PAGE_SIZE);
+
+  if (!canRead) {
+    return <div className="rounded-md border bg-card p-6 text-sm text-muted-foreground">You do not have permission to view {title.toLowerCase()} users.</div>;
+  }
 
   return (
     <div className="space-y-4">
@@ -111,7 +143,7 @@ export function UserTable({ category, title }: Props) {
           <Input className="pl-8" placeholder="Search users…" value={search}
             onChange={(e) => { setSearch(e.target.value); setPage(1); }} />
         </div>
-        {canManage && (
+        {canCreate && (
           <Button size="sm" onClick={() => { setShowCreate(true); setEditUser(null); }}>
             <Plus className="mr-1 h-4 w-4" /> Add User
           </Button>
@@ -138,19 +170,19 @@ export function UserTable({ category, title }: Props) {
         <table className="w-full text-sm">
           <thead className="bg-muted/50">
             <tr>
-              {['Name','Username','Email','Role','Department','Status',''].map((h) => (
+              {['Name','Username','Email','Role','Company / Utility','Department','Status',''].map((h) => (
                 <th key={h} className="px-4 py-3 text-left font-medium text-muted-foreground">{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {isLoading && (
-              <tr><td colSpan={7} className="text-center py-8">
+              <tr><td colSpan={8} className="text-center py-8">
                 <Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" />
               </td></tr>
             )}
             {!isLoading && (data?.users ?? []).length === 0 && (
-              <tr><td colSpan={7} className="text-center py-8 text-muted-foreground">No users found.</td></tr>
+              <tr><td colSpan={8} className="text-center py-8 text-muted-foreground">No users found.</td></tr>
             )}
             {!isLoading && (data?.users ?? []).map((u) => (
               <tr key={u.id} className="border-t hover:bg-muted/30 transition-colors">
@@ -158,23 +190,28 @@ export function UserTable({ category, title }: Props) {
                 <td className="px-4 py-3 text-muted-foreground">@{u.username}</td>
                 <td className="px-4 py-3">{u.email}</td>
                 <td className="px-4 py-3 capitalize">{typeof u.role === 'object' ? u.role?.name : u.roleId}</td>
+                <td className="px-4 py-3">{typeof u.company === 'object' ? u.company?.name : (u.companyId || '—')}</td>
                 <td className="px-4 py-3">{typeof u.department === 'object' ? u.department?.name : u.departmentId}</td>
                 <td className="px-4 py-3">
-                  <Badge variant={statusVariant(u.status)} className="cursor-pointer" onClick={() => canManage && onToggleStatus(u)}>
+                  <Badge variant={statusVariant(u.status)} className={canUpdate ? 'cursor-pointer' : ''} onClick={() => canUpdate && onToggleStatus(u)}>
                     {u.status}
                   </Badge>
                 </td>
                 <td className="px-4 py-3">
-                  {canManage && (
+                  {(canUpdate || canDelete) && (
                     <div className="flex items-center justify-end gap-1">
-                      <Button size="icon" variant="ghost" className="h-7 w-7"
-                        onClick={() => { setEditUser(u); setShowCreate(false); }}>
-                        <Pencil className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:text-destructive"
-                        onClick={() => onDelete(u.id)}>
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
+                      {canUpdate && (
+                        <Button size="icon" variant="ghost" className="h-7 w-7"
+                          onClick={() => { setEditUser(u); setShowCreate(false); }}>
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+                      {canDelete && (
+                        <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:text-destructive"
+                          onClick={() => onDelete(u.id)}>
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
                     </div>
                   )}
                 </td>

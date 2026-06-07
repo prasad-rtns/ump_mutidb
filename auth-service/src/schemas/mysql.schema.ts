@@ -6,9 +6,20 @@ import { relations } from 'drizzle-orm';
 export const roles = mysqlTable('roles', {
   id: varchar('id', { length: 36 }).primaryKey(),
   name: varchar('name', { length: 100 }).notNull(),
-  slug: mysqlEnum('slug', ['admin', 'lead', 'user']).notNull().unique(),
+  slug: varchar('slug', { length: 100 }).notNull().unique(),
   description: text('description'),
   permissions: json('permissions').$type<string[]>().default([]),
+  isActive: boolean('is_active').default(true).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().onUpdateNow().notNull(),
+});
+
+export const companies = mysqlTable('company_or_utilities', {
+  id: varchar('id', { length: 36 }).primaryKey(),
+  name: varchar('name', { length: 200 }).notNull(),
+  code: varchar('code', { length: 50 }).notNull().unique(),
+  type: mysqlEnum('type', ['company', 'utility']).default('company').notNull(),
+  description: text('description'),
   isActive: boolean('is_active').default(true).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().onUpdateNow().notNull(),
@@ -51,6 +62,7 @@ export const users = mysqlTable('users', {
   phone: varchar('phone', { length: 20 }),
   avatar: text('avatar'),
   roleId: varchar('role_id', { length: 36 }).notNull(),
+  companyId: varchar('company_id', { length: 36 }),
   departmentId: varchar('department_id', { length: 36 }).notNull(),
   designationId: varchar('designation_id', { length: 36 }).notNull(),
   userCategory: mysqlEnum('user_category', ['external', 'internal', 'admin']).default('internal').notNull(),
@@ -73,8 +85,25 @@ export const users = mysqlTable('users', {
   emailIdx: uniqueIndex('users_email_idx').on(t.email),
   usernameIdx: uniqueIndex('users_username_idx').on(t.username),
   roleIdx: index('users_role_idx').on(t.roleId),
+  companyIdx: index('users_company_idx').on(t.companyId),
   deptIdx: index('users_dept_idx').on(t.departmentId),
   statusIdx: index('users_status_idx').on(t.status),
+}));
+
+export const moduleMenus = mysqlTable('module_menus', {
+  id: varchar('id', { length: 36 }).primaryKey(),
+  name: varchar('name', { length: 150 }).notNull(),
+  code: varchar('code', { length: 100 }).notNull().unique(),
+  route: varchar('route', { length: 300 }).notNull(),
+  icon: varchar('icon', { length: 100 }),
+  parentId: varchar('parent_id', { length: 36 }),
+  sortOrder: int('sort_order').default(0).notNull(),
+  permissions: json('permissions').$type<string[]>().default([]),
+  isActive: boolean('is_active').default(true).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().onUpdateNow().notNull(),
+}, (t) => ({
+  parentIdx: index('module_menus_parent_idx').on(t.parentId),
 }));
 
 export const sessions = mysqlTable('sessions', {
@@ -108,4 +137,4 @@ export const auditLogs = mysqlTable('audit_logs', {
   createdAtIdx: index('audit_created_idx').on(t.createdAt),
 }));
 
-export const mysqlSchema = { roles, departments, designations, users, sessions, auditLogs };
+export const mysqlSchema = { roles, companies, departments, designations, users, moduleMenus, sessions, auditLogs };
