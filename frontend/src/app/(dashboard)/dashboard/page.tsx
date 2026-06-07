@@ -1,9 +1,11 @@
 'use client';
+import type React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Users, Globe, Tag, Layers } from 'lucide-react';
 import { authApi, masterApi } from '@/lib/api';
 import { useAuth } from '@/hooks/use-auth';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useTranslation } from '@/i18n';
 
 function StatCard({ title, value, icon: Icon, color }: { title: string; value: number | string; icon: React.ElementType; color: string }) {
   return (
@@ -23,6 +25,7 @@ function StatCard({ title, value, icon: Icon, color }: { title: string; value: n
 
 export default function DashboardPage() {
   const { user } = useAuth();
+  const { t } = useTranslation();
 
   const { data: dashStats } = useQuery({
     queryKey: ['dashboard'],
@@ -45,26 +48,26 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Welcome, {user?.firstName}!</h1>
-        <p className="text-muted-foreground mt-1">Here&apos;s an overview of your platform.</p>
+        <h1 className="text-2xl font-bold">{t('dashboard.welcome', { name: user?.firstName ?? '' })}</h1>
+        <p className="text-muted-foreground mt-1">{t('dashboard.overview')}</p>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard title="Total Users"    value={dashStats?.users        ?? '–'} icon={Users}  color="bg-blue-500" />
-        <StatCard title="Countries"      value={dashStats?.countries    ?? '–'} icon={Globe}  color="bg-green-500" />
-        <StatCard title="Tags"           value={dashStats?.tags         ?? '–'} icon={Tag}    color="bg-purple-500" />
-        <StatCard title="Service Types"  value={dashStats?.serviceTypes ?? '–'} icon={Layers} color="bg-orange-500" />
+        <StatCard title={t('dashboard.totalUsers')} value={dashStats?.users ?? '-'} icon={Users} color="bg-blue-500" />
+        <StatCard title={t('dashboard.countries')} value={dashStats?.countries ?? '-'} icon={Globe} color="bg-green-500" />
+        <StatCard title={t('dashboard.tags')} value={dashStats?.tags ?? '-'} icon={Tag} color="bg-purple-500" />
+        <StatCard title={t('dashboard.serviceTypes')} value={dashStats?.serviceTypes ?? '-'} icon={Layers} color="bg-orange-500" />
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Your Profile</CardTitle>
+          <CardTitle className="text-base">{t('dashboard.yourProfile')}</CardTitle>
         </CardHeader>
-        <CardContent className="grid grid-cols-2 gap-4 text-sm">
-          <div><p className="text-muted-foreground">Name</p><p className="font-medium">{user?.firstName} {user?.lastName}</p></div>
-          <div><p className="text-muted-foreground">Email</p><p className="font-medium">{user?.email}</p></div>
-          <div><p className="text-muted-foreground">Role</p><p className="font-medium capitalize">{user?.role?.name ?? user?.role?.slug}</p></div>
-          <div><p className="text-muted-foreground">Category</p><p className="font-medium capitalize">{user?.userCategory}</p></div>
+        <CardContent className="grid grid-cols-1 gap-4 text-sm sm:grid-cols-2">
+          <div><p className="text-muted-foreground">{t('dashboard.name')}</p><p className="font-medium">{user?.firstName} {user?.lastName}</p></div>
+          <div><p className="text-muted-foreground">{t('dashboard.email')}</p><p className="font-medium">{user?.email}</p></div>
+          <div><p className="text-muted-foreground">{t('dashboard.role')}</p><p className="font-medium capitalize">{user?.role?.name ?? user?.role?.slug}</p></div>
+          <div><p className="text-muted-foreground">{t('dashboard.category')}</p><p className="font-medium capitalize">{user?.userCategory}</p></div>
         </CardContent>
       </Card>
     </div>

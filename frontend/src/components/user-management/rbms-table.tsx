@@ -6,13 +6,16 @@ import { Check, ChevronDown, ChevronRight, Loader2, LockKeyhole, Pencil, Plus, S
 import { authApi, apiErrorMessage } from '@/lib/api';
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
+import { useSchemaCatalogue } from '@/hooks/use-schema';
+import { mergeModulesWithMasterSchema, permissionListForModules } from '@/lib/dynamic-modules';
+import { translatedModuleName } from '@/lib/module-translations';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import type { IModuleMenu } from '@/types';
+import { useTranslation } from '@/i18n';
 
 type FieldType = 'text' | 'textarea' | 'number' | 'select' | 'permissions';
-const FULL_ACCESS_COMPAT_PERMISSIONS = ['roles:*', 'modules:*', 'users:*', 'master:*'];
 
 export interface RbmsField {
   name: string;
@@ -82,6 +85,7 @@ function PermissionSelector({
   value: string[];
   onChange: (value: string[]) => void;
 }) {
+  const { t } = useTranslation();
   const [utility, setUtility] = useState('all');
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const selected = useMemo(() => new Set(value), [value]);
@@ -90,10 +94,12 @@ function PermissionSelector({
     queryKey: ['um', 'modules', 'permission-selector'],
     queryFn: async () => (await authApi.get('/auth/master/modules')).data.data,
   });
+  const { data: schemas, isLoading: schemasLoading } = useSchemaCatalogue();
 
   const modules = useMemo(
-    () => (modulesQuery.data ?? []).filter((module) => module.isActive !== false && (module.permissions?.length ?? 0) > 0),
-    [modulesQuery.data],
+    () => mergeModulesWithMasterSchema(modulesQuery.data ?? [], schemas)
+      .filter((module) => module.isActive !== false && (module.permissions?.length ?? 0) > 0),
+    [modulesQuery.data, schemas],
   );
   const utilityOptions = useMemo(() => {
     const prefixes = modules
@@ -106,7 +112,7 @@ function PermissionSelector({
     [modules, utility],
   );
   const allPermissions = useMemo(
-    () => Array.from(new Set([...modules.flatMap((module) => module.permissions ?? []), ...FULL_ACCESS_COMPAT_PERMISSIONS])),
+    () => permissionListForModules(modules),
     [modules],
   );
   const selectedCount = value.length;
@@ -140,23 +146,23 @@ function PermissionSelector({
         <div>
           <div className="flex items-center gap-2 text-sm font-semibold">
             <ShieldCheck className="h-4 w-4 text-primary" />
-            Module Permissions
+            {t('rbms.modulePermissions')}
           </div>
           <p className="mt-1 text-xs text-muted-foreground">
-            Select full access or choose actions per module.
+            {t('rbms.permissionHelp')}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Badge variant="secondary">{selectedCount} selected</Badge>
+          <Badge variant="secondary">{t('rbms.selected', { count: selectedCount })}</Badge>
           <Button
             type="button"
             size="sm"
             variant={fullAccess ? 'default' : 'outline'}
             onClick={() => setPermissions(fullAccess ? [] : allPermissions)}
-            disabled={modulesQuery.isLoading || allPermissions.length === 0}
+            disabled={modulesQuery.isLoading || schemasLoading || allPermissions.length === 0}
           >
-            <LockKeyhole className="mr-2 h-4 w-4" />
-            Full Access
+            <LockKeyhole className="me-2 h-4 w-4" />
+            {t('rbms.fullAccess')}
           </Button>
         </div>
       </div>
@@ -171,19 +177,19 @@ function PermissionSelector({
             onClick={() => setUtility(option)}
             className="capitalize"
           >
-            {option === 'all' ? 'All Modules' : option}
+            {option === 'all' ? t('rbms.allModules') : option}
           </Button>
         ))}
       </div>
 
-      {modulesQuery.isLoading ? (
+      {modulesQuery.isLoading || schemasLoading ? (
         <div className="flex items-center justify-center rounded-md border bg-background py-8 text-sm text-muted-foreground">
-          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          Loading modules...
+          <Loader2 className="me-2 h-4 w-4 animate-spin" />
+          {t('rbms.loadingModules')}
         </div>
       ) : visibleModules.length === 0 ? (
         <div className="rounded-md border bg-background px-3 py-6 text-center text-sm text-muted-foreground">
-          No active module permissions found.
+          {t('rbms.noModulePermissions')}
         </div>
       ) : (
         <div className="space-y-2">
@@ -192,17 +198,18 @@ function PermissionSelector({
             const moduleSelected = modulePermissions.filter((permission) => selected.has(permission)).length;
             const isExpanded = expanded[module.id] ?? moduleSelected > 0;
             const moduleComplete = moduleSelected === modulePermissions.length;
+            const moduleLabel = translatedModuleName(module, t);
             return (
               <div key={module.id} className="rounded-md border bg-background">
                 <div className="flex flex-col gap-3 p-3 sm:flex-row sm:items-center sm:justify-between">
                   <button
                     type="button"
-                    className="flex min-w-0 flex-1 items-center gap-2 text-left"
+                    className="flex min-w-0 flex-1 items-center gap-2 text-start"
                     onClick={() => setExpanded((current) => ({ ...current, [module.id]: !isExpanded }))}
                   >
                     {isExpanded ? <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />}
                     <span className="min-w-0">
-                      <span className="block truncate text-sm font-medium">{module.name}</span>
+                      <span className="block truncate text-sm font-medium">{moduleLabel}</span>
                       <span className="block truncate text-xs text-muted-foreground">{module.code} - {module.route}</span>
                     </span>
                   </button>
@@ -211,8 +218,8 @@ function PermissionSelector({
                       {moduleSelected}/{modulePermissions.length}
                     </Badge>
                     <Button type="button" size="sm" variant={moduleComplete ? 'default' : 'outline'} className="flex-1 sm:flex-none" onClick={() => toggleModule(module)}>
-                      <Check className="mr-2 h-4 w-4" />
-                      {moduleComplete ? 'Clear Module' : 'Allow Module'}
+                      <Check className="me-2 h-4 w-4" />
+                      {moduleComplete ? t('rbms.clearModule') : t('rbms.allowModule')}
                     </Button>
                   </div>
                 </div>
@@ -233,7 +240,7 @@ function PermissionSelector({
                           ].join(' ')}
                           onClick={() => togglePermission(permission)}
                         >
-                          {active && <Check className="mr-1.5 h-3.5 w-3.5" />}
+                          {active && <Check className="me-1.5 h-3.5 w-3.5" />}
                           {permissionLabel(permission)}
                         </button>
                       );
@@ -251,7 +258,7 @@ function PermissionSelector({
           {value.slice(0, 18).map((permission) => (
             <Badge key={permission} variant="outline">{permission}</Badge>
           ))}
-          {value.length > 18 && <Badge variant="secondary">+{value.length - 18} more</Badge>}
+          {value.length > 18 && <Badge variant="secondary">{t('rbms.more', { count: value.length - 18 })}</Badge>}
         </div>
       )}
     </div>
@@ -271,6 +278,7 @@ function EntityForm({
   onCancel: () => void;
   onSubmit: (values: Record<string, unknown>) => Promise<void>;
 }) {
+  const { t } = useTranslation();
   const [values, setValues] = useState<Record<string, unknown>>(() =>
     Object.fromEntries(config.fields.map((field) => [field.name, fieldDefault(row, field)])),
   );
@@ -288,7 +296,7 @@ function EntityForm({
       }}
     >
       <div>
-        <h3 className="font-semibold">{row ? `Edit ${config.title}` : `New ${config.title}`}</h3>
+        <h3 className="font-semibold">{row ? t('rbms.editTitle', { title: config.title }) : t('rbms.newTitle', { title: config.title })}</h3>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -297,8 +305,8 @@ function EntityForm({
           return (
             <div key={field.name} className={field.type === 'textarea' || field.type === 'permissions' ? 'md:col-span-2 space-y-1' : 'space-y-1'}>
               <span className="text-sm font-medium">
-                {field.label}
-                {field.required && <span className="text-destructive ml-1">*</span>}
+                {t(`labels.${field.name}`, {}, field.label)}
+                {field.required && <span className="text-destructive ms-1">*</span>}
               </span>
               {field.type === 'permissions' && field.permissionMode === 'module-selector' ? (
                 <PermissionSelector
@@ -320,7 +328,7 @@ function EntityForm({
                   onChange={(event) => setField(field.name, event.target.value)}
                   required={field.required}
                 >
-                  <option value="">Select {field.label}</option>
+                  <option value="">{t('common.select', { name: t(`labels.${field.name}`, {}, field.label) })}</option>
                   {(field.options ?? []).map((option) => (
                     <option key={option.value} value={option.value}>{option.label}</option>
                   ))}
@@ -340,9 +348,9 @@ function EntityForm({
       </div>
 
       <div className="flex flex-col-reverse gap-2 border-t pt-3 sm:flex-row sm:justify-end">
-        <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={onCancel}>Cancel</Button>
+        <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={onCancel}>{t('common.cancel')}</Button>
         <Button type="submit" className="w-full sm:w-auto" disabled={saving}>
-          {saving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving...</> : 'Save'}
+          {saving ? <><Loader2 className="me-2 h-4 w-4 animate-spin" />{t('common.saving')}</> : t('common.save')}
         </Button>
       </div>
     </form>
@@ -352,6 +360,7 @@ function EntityForm({
 export function RbmsTable({ config }: { config: RbmsConfig }) {
   const qc = useQueryClient();
   const { canAny } = useAuth();
+  const { t } = useTranslation();
   const [search, setSearch] = useState('');
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<Record<string, unknown> | null>(null);
@@ -389,9 +398,9 @@ export function RbmsTable({ config }: { config: RbmsConfig }) {
       await qc.invalidateQueries({ queryKey: ['rbms', config.endpoint] });
       setCreating(false);
       setEditing(null);
-      toast({ title: `${config.title} saved` });
+      toast({ title: t('rbms.saved', { title: config.title }) });
     } catch (error) {
-      toast({ title: 'Error', description: apiErrorMessage(error), variant: 'destructive' });
+      toast({ title: t('common.error'), description: apiErrorMessage(error), variant: 'destructive' });
     } finally {
       setSaving(false);
     }
@@ -399,13 +408,13 @@ export function RbmsTable({ config }: { config: RbmsConfig }) {
 
   async function remove(row: Record<string, unknown>) {
     if (!canDelete) return;
-    if (!confirm(`Deactivate this ${config.title}?`)) return;
+    if (!confirm(t('rbms.deactivateConfirm', { title: config.title }))) return;
     try {
       await deleteMut.mutateAsync(String(row[idField]));
       await qc.invalidateQueries({ queryKey: ['rbms', config.endpoint] });
-      toast({ title: `${config.title} deactivated` });
+      toast({ title: t('rbms.deactivated', { title: config.title }) });
     } catch (error) {
-      toast({ title: 'Error', description: apiErrorMessage(error), variant: 'destructive' });
+      toast({ title: t('common.error'), description: apiErrorMessage(error), variant: 'destructive' });
     }
   }
 
@@ -418,19 +427,19 @@ export function RbmsTable({ config }: { config: RbmsConfig }) {
 
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div className="relative w-full sm:w-72">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input className="pl-8" placeholder={`Search ${config.title.toLowerCase()}...`} value={search} onChange={(event) => setSearch(event.target.value)} />
+          <Search className="absolute start-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input className="ps-8" placeholder={t('rbms.searchTitle', { title: config.title.toLowerCase() })} value={search} onChange={(event) => setSearch(event.target.value)} />
         </div>
         {canCreate && (
           <Button size="sm" className="w-full sm:w-auto" onClick={() => { setCreating(true); setEditing(null); }}>
-            <Plus className="mr-1 h-4 w-4" /> Add
+            <Plus className="me-1 h-4 w-4" /> {t('rbms.add')}
           </Button>
         )}
       </div>
 
       {!canRead && (
         <div className="rounded-md border bg-card p-6 text-sm text-muted-foreground">
-          You do not have permission to view {config.title.toLowerCase()}.
+          {t('common.notAllowedView', { name: config.title.toLowerCase() })}
         </div>
       )}
 
@@ -444,13 +453,13 @@ export function RbmsTable({ config }: { config: RbmsConfig }) {
             <table className="w-full text-sm">
               <thead className="bg-muted/50">
                 <tr>
-                  {config.columns.map((column) => <th key={column.key} className="px-4 py-3 text-left font-medium text-muted-foreground">{column.label}</th>)}
-                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">Actions</th>
+                  {config.columns.map((column) => <th key={column.key} className="px-4 py-3 text-start font-medium text-muted-foreground">{t(`labels.${column.key}`, {}, column.label)}</th>)}
+                  <th className="px-4 py-3 text-end font-medium text-muted-foreground">{t('common.actions')}</th>
                 </tr>
               </thead>
               <tbody>
                 {query.isLoading && <tr><td className="py-8 text-center" colSpan={config.columns.length + 1}><Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" /></td></tr>}
-                {!query.isLoading && rows.length === 0 && <tr><td className="py-8 text-center text-muted-foreground" colSpan={config.columns.length + 1}>No records found.</td></tr>}
+                {!query.isLoading && rows.length === 0 && <tr><td className="py-8 text-center text-muted-foreground" colSpan={config.columns.length + 1}>{t('common.noRecords')}</td></tr>}
                 {!query.isLoading && rows.map((row) => (
                   <tr key={String(row[idField])} className="border-t hover:bg-muted/30">
                     {config.columns.map((column) => (
@@ -478,7 +487,7 @@ export function RbmsTable({ config }: { config: RbmsConfig }) {
             )}
             {!query.isLoading && rows.length === 0 && (
               <div className="rounded-md border bg-card px-4 py-8 text-center text-sm text-muted-foreground">
-                No records found.
+                {t('common.noRecords')}
               </div>
             )}
             {!query.isLoading && rows.map((row) => (
@@ -486,7 +495,7 @@ export function RbmsTable({ config }: { config: RbmsConfig }) {
                 <div className="space-y-3">
                   {config.columns.map((column) => (
                     <div key={column.key} className="grid grid-cols-[7rem_1fr] gap-3 text-sm">
-                      <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{column.label}</span>
+                      <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{t(`labels.${column.key}`, {}, column.label)}</span>
                       <div className="min-w-0 break-words">
                         {column.render ? column.render(row) : String(row[column.key] ?? '')}
                       </div>
@@ -497,12 +506,12 @@ export function RbmsTable({ config }: { config: RbmsConfig }) {
                   <div className="mt-4 flex gap-2 border-t pt-3">
                     {canUpdate && (
                       <Button size="sm" variant="outline" className="flex-1" onClick={() => { setEditing(row); setCreating(false); }}>
-                        <Pencil className="mr-2 h-3.5 w-3.5" /> Edit
+                        <Pencil className="me-2 h-3.5 w-3.5" /> {t('common.edit')}
                       </Button>
                     )}
                     {canDelete && (
                       <Button size="sm" variant="outline" className="flex-1 text-destructive hover:text-destructive" onClick={() => remove(row)}>
-                        <Trash2 className="mr-2 h-3.5 w-3.5" /> Delete
+                        <Trash2 className="me-2 h-3.5 w-3.5" /> {t('common.delete')}
                       </Button>
                     )}
                   </div>
@@ -517,5 +526,6 @@ export function RbmsTable({ config }: { config: RbmsConfig }) {
 }
 
 export function ActiveBadge({ row }: { row: Record<string, unknown> }) {
-  return <Badge variant={row.isActive === false ? 'secondary' : 'success'}>{row.isActive === false ? 'Inactive' : 'Active'}</Badge>;
+  const { t } = useTranslation();
+  return <Badge variant={row.isActive === false ? 'secondary' : 'success'}>{row.isActive === false ? t('users.inactive') : t('users.active')}</Badge>;
 }

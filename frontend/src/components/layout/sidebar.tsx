@@ -27,8 +27,13 @@ import {
   Users,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
+import { useSchemaCatalogue } from '@/hooks/use-schema';
 import { authApi } from '@/lib/api';
 import { cn } from '@/lib/utils';
+import { LanguageSwitcher } from '@/components/language/language-switcher';
+import { useTranslation } from '@/i18n';
+import { mergeModulesWithMasterSchema } from '@/lib/dynamic-modules';
+import { translatedModuleName } from '@/lib/module-translations';
 import type { IModuleMenu } from '@/types';
 
 const ICON_MAP: Record<string, React.ElementType> = {
@@ -110,6 +115,7 @@ function nodeContainsPath(module: ModuleNode, pathname: string): boolean {
 export function Sidebar({ className, onNavigate }: SidebarProps) {
   const pathname = usePathname();
   const { user, logout, canAny } = useAuth();
+  const { direction, t } = useTranslation();
   const [open, setOpen] = useState<Record<string, boolean>>({});
 
   const { data: modules = [] } = useQuery<IModuleMenu[]>({
@@ -117,6 +123,8 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
     queryFn: async () => (await authApi.get('/auth/master/modules')).data.data,
     staleTime: 5 * 60 * 1000,
   });
+  const { data: schemas } = useSchemaCatalogue();
+  const effectiveModules = useMemo(() => mergeModulesWithMasterSchema(modules, schemas), [modules, schemas]);
 
   const visibleTree = useMemo(() => {
     function filterNode(node: ModuleNode): ModuleNode | null {
@@ -129,18 +137,19 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
       return { ...node, children: visibleChildren };
     }
 
-    return buildTree(modules.filter((module) => module.isActive !== false))
+    return buildTree(effectiveModules.filter((module) => module.isActive !== false))
       .flatMap((node) => {
         const visible = filterNode(node);
         return visible ? [visible] : [];
       });
-  }, [canAny, modules]);
+  }, [canAny, effectiveModules]);
 
   function NavLink({ module, depth = 0 }: { module: ModuleNode; depth?: number }) {
     const href = moduleRoute(module);
     const Icon = iconFor(module.icon);
     const active = href ? pathname === href || pathname.startsWith(`${href}/`) : false;
-    const padding = depth === 0 ? 'px-3' : depth === 1 ? 'pl-8 pr-3' : 'pl-12 pr-3';
+    const padding = depth === 0 ? 'px-3' : depth === 1 ? 'ps-8 pe-3' : 'ps-12 pe-3';
+    const label = translatedModuleName(module, t);
 
     return (
       <Link href={href || '#'} className={cn(
@@ -149,7 +158,7 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
         active ? 'bg-sidebar-primary text-sidebar-primary-foreground' : 'text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
       )} onClick={onNavigate}>
         <Icon className="h-4 w-4 shrink-0" />
-        <span className="truncate">{module.name}</span>
+        <span className="truncate">{label}</span>
       </Link>
     );
   }
@@ -160,7 +169,8 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
     const Icon = iconFor(module.icon);
     const expanded = open[module.id] ?? nodeContainsPath(module, pathname);
     const active = href ? pathname === href || pathname.startsWith(`${href}/`) : false;
-    const padding = depth === 0 ? 'px-3' : depth === 1 ? 'pl-8 pr-3' : 'pl-12 pr-3';
+    const padding = depth === 0 ? 'px-3' : depth === 1 ? 'ps-8 pe-3' : 'ps-12 pe-3';
+    const label = translatedModuleName(module, t);
 
     if (!hasChildren) return <NavLink module={module} depth={depth} />;
 
@@ -177,9 +187,9 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
         >
           <span className="flex min-w-0 items-center gap-2.5">
             <Icon className="h-4 w-4 shrink-0" />
-            <span className="truncate">{module.name}</span>
+            <span className="truncate">{label}</span>
           </span>
-          {expanded ? <ChevronDown className="h-3.5 w-3.5 shrink-0" /> : <ChevronRight className="h-3.5 w-3.5 shrink-0" />}
+          {expanded ? <ChevronDown className="h-3.5 w-3.5 shrink-0" /> : <ChevronRight className={cn('h-3.5 w-3.5 shrink-0', direction === 'rtl' && 'rotate-180')} />}
         </button>
         {expanded && (
           <div className="mt-1 space-y-1">
@@ -193,8 +203,11 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
   return (
     <aside className={cn('w-60 shrink-0 bg-sidebar flex flex-col h-screen overflow-y-auto', className)}>
       <div className="px-4 py-5 border-b border-sidebar-border">
-        <p className="text-sidebar-foreground font-bold text-lg">UMP Admin</p>
+        <p className="text-sidebar-foreground font-bold text-lg">{t('app.name')}</p>
         <p className="text-sidebar-foreground/60 text-xs truncate">{user?.email}</p>
+        <div className="mt-3 hidden md:block">
+          <LanguageSwitcher />
+        </div>
       </div>
 
       <nav className="flex-1 px-2 py-4 space-y-1">
@@ -211,7 +224,7 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
           className="flex items-center gap-2.5 w-full px-3 py-2 rounded-md text-sm text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
         >
           <LogOut className="h-4 w-4" />
-          Sign out
+          {t('layout.signOut')}
         </button>
       </div>
     </aside>

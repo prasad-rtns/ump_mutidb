@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
+import { useTranslation } from '@/i18n';
 import type { IUser, IDepartment, IRole, IDesignation, ICompanyOrUtility, UserCategory } from '@/types';
 
 interface Props { category: UserCategory; title: string }
@@ -133,9 +134,9 @@ async function hasValidImageSignature(file: File): Promise<boolean> {
 }
 
 async function validateProfilePhoto(file: File): Promise<string | null> {
-  if (!PROFILE_PHOTO_TYPES.includes(file.type)) return 'Use a JPG, PNG, or WebP image.';
-  if (file.size > PROFILE_PHOTO_MAX_BYTES) return 'Profile photo must be 2MB or smaller.';
-  if (!(await hasValidImageSignature(file))) return 'Image content does not match the selected file type.';
+  if (!PROFILE_PHOTO_TYPES.includes(file.type)) return 'type';
+  if (file.size > PROFILE_PHOTO_MAX_BYTES) return 'size';
+  if (!(await hasValidImageSignature(file))) return 'signature';
   return null;
 }
 
@@ -148,7 +149,7 @@ async function uploadProfilePhoto(file: File, entityId?: string): Promise<string
     headers: { 'Content-Type': 'multipart/form-data' },
   });
   const doc = response.data?.data as UploadedDocument | undefined;
-  if (!doc?.url) throw new Error('Document service did not return an uploaded photo URL');
+  if (!doc?.url) throw new Error('uploadMissingUrl');
   return doc.url;
 }
 
@@ -169,6 +170,7 @@ function UserAvatar({ user, size = 'md' }: { user: IUser; size?: 'sm' | 'md' | '
 }
 
 function UserForm({ mode, title, user, selectOptions, isLoading, onCancel, onSubmit }: UserFormProps) {
+  const { t } = useTranslation();
   const [values, setValues] = useState<UserFormValues>(() => initialFormValues(user));
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState(displayAvatarUrl(values.avatar));
@@ -195,8 +197,9 @@ function UserForm({ mode, title, user, selectOptions, isLoading, onCancel, onSub
       return;
     }
     const error = await validateProfilePhoto(file);
+    const translatedError = error === 'type' ? t('users.imageTypeError') : error === 'size' ? t('users.imageSizeError') : error === 'signature' ? t('users.imageSignatureError') : error;
     if (error) {
-      setFileError(error);
+      setFileError(translatedError || '');
       setPhotoFile(null);
       return;
     }
@@ -208,7 +211,15 @@ function UserForm({ mode, title, user, selectOptions, isLoading, onCancel, onSub
     setFileError('');
 
     let avatar = values.avatar.trim();
-    if (photoFile) avatar = await uploadProfilePhoto(photoFile, user?.id);
+    try {
+      if (photoFile) avatar = await uploadProfilePhoto(photoFile, user?.id);
+    } catch (error) {
+      const message = error instanceof Error && error.message === 'uploadMissingUrl'
+        ? t('users.uploadMissingUrl')
+        : apiErrorMessage(error);
+      setFileError(message);
+      return;
+    }
 
     const payload: Record<string, unknown> = {
       firstName: values.firstName.trim(),
@@ -236,20 +247,20 @@ function UserForm({ mode, title, user, selectOptions, isLoading, onCancel, onSub
     <form className="rounded-lg border bg-card p-4" onSubmit={submit}>
       <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h3 className="font-semibold">{mode === 'create' ? `New ${title} User` : `Edit User - ${user ? userName(user) : ''}`}</h3>
-          <p className="mt-1 text-xs text-muted-foreground">Profile photos are uploaded through document-service.</p>
+          <h3 className="font-semibold">{mode === 'create' ? t('users.newUser', { type: title }) : t('users.editUser', { name: user ? userName(user) : '' })}</h3>
+          <p className="mt-1 text-xs text-muted-foreground">{t('users.photoHelp')}</p>
         </div>
         <div className="flex items-center gap-3">
           <div className="h-16 w-16 overflow-hidden rounded-full border bg-muted">
             {previewUrl ? (
-              <img src={previewUrl} alt="Profile preview" className="h-full w-full object-cover" referrerPolicy="no-referrer" />
+              <img src={previewUrl} alt={t('users.profilePreview')} className="h-full w-full object-cover" referrerPolicy="no-referrer" />
             ) : (
               <div className="flex h-full w-full items-center justify-center text-muted-foreground"><UserRound className="h-7 w-7" /></div>
             )}
           </div>
           <div>
             <Label htmlFor="avatarFile" className="inline-flex h-9 cursor-pointer items-center rounded-md border px-3 text-sm font-medium">
-              <Upload className="mr-2 h-4 w-4" /> Photo
+              <Upload className="me-2 h-4 w-4" /> {t('users.photo')}
             </Label>
             <input id="avatarFile" type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={(event) => handleFileChange(event.target.files?.[0])} />
           </div>
@@ -259,26 +270,26 @@ function UserForm({ mode, title, user, selectOptions, isLoading, onCancel, onSub
       {fileError && <p className="mb-3 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">{fileError}</p>}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <Field label="First Name" required><Input value={values.firstName} onChange={(e) => setField('firstName', e.target.value)} required maxLength={100} /></Field>
-        <Field label="Last Name" required><Input value={values.lastName} onChange={(e) => setField('lastName', e.target.value)} required maxLength={100} /></Field>
-        <Field label="Username" required>
+        <Field label={t('auth.firstName')} required><Input value={values.firstName} onChange={(e) => setField('firstName', e.target.value)} required maxLength={100} /></Field>
+        <Field label={t('auth.lastName')} required><Input value={values.lastName} onChange={(e) => setField('lastName', e.target.value)} required maxLength={100} /></Field>
+        <Field label={t('auth.username')} required>
           <Input value={values.username} onChange={(e) => setField('username', e.target.value)} required={mode === 'create'} readOnly={mode === 'edit'} maxLength={50} />
         </Field>
-        <Field label="Email" required>
+        <Field label={t('auth.email')} required>
           <Input type="email" value={values.email} onChange={(e) => setField('email', e.target.value)} required={mode === 'create'} readOnly={mode === 'edit'} />
         </Field>
-        {mode === 'create' && <Field label="Password" required><Input type="password" value={values.password} onChange={(e) => setField('password', e.target.value)} required /></Field>}
-        <Field label="Phone"><Input value={values.phone} onChange={(e) => setField('phone', e.target.value)} /></Field>
-        <Field label="Role" required><Select value={values.roleId} options={selectOptions.roleId} placeholder="Select Role" onChange={(value) => setField('roleId', value)} required /></Field>
-        <Field label="Company / Utility"><Select value={values.companyId} options={selectOptions.companyId} placeholder="Select Company / Utility" onChange={(value) => setField('companyId', value)} /></Field>
-        <Field label="Department" required><Select value={values.departmentId} options={selectOptions.departmentId} placeholder="Select Department" onChange={(value) => setField('departmentId', value)} required /></Field>
-        <Field label="Designation" required><Select value={values.designationId} options={selectOptions.designationId} placeholder="Select Designation" onChange={(value) => setField('designationId', value)} required /></Field>
+        {mode === 'create' && <Field label={t('auth.password')} required><Input type="password" value={values.password} onChange={(e) => setField('password', e.target.value)} required /></Field>}
+        <Field label={t('auth.phone')}><Input value={values.phone} onChange={(e) => setField('phone', e.target.value)} /></Field>
+        <Field label={t('auth.role')} required><Select value={values.roleId} options={selectOptions.roleId} placeholder={t('auth.selectRole')} onChange={(value) => setField('roleId', value)} required /></Field>
+        <Field label={t('users.companyUtility')}><Select value={values.companyId} options={selectOptions.companyId} placeholder={t('common.select', { name: t('users.companyUtility') })} onChange={(value) => setField('companyId', value)} /></Field>
+        <Field label={t('auth.department')} required><Select value={values.departmentId} options={selectOptions.departmentId} placeholder={t('auth.selectDepartment')} onChange={(value) => setField('departmentId', value)} required /></Field>
+        <Field label={t('auth.designation')} required><Select value={values.designationId} options={selectOptions.designationId} placeholder={t('auth.selectDesignation')} onChange={(value) => setField('designationId', value)} required /></Field>
         {mode === 'edit' && (
-          <Field label="Status" required>
+          <Field label={t('users.status')} required>
             <Select
               value={values.status}
-              options={[{ value: 'active', label: 'Active' }, { value: 'inactive', label: 'Inactive' }, { value: 'suspended', label: 'Suspended' }]}
-              placeholder="Select Status"
+              options={[{ value: 'active', label: t('users.active') }, { value: 'inactive', label: t('users.inactive') }, { value: 'suspended', label: t('users.suspended') }]}
+              placeholder={t('common.select', { name: t('users.status') })}
               onChange={(value) => setField('status', value)}
               required
             />
@@ -287,9 +298,9 @@ function UserForm({ mode, title, user, selectOptions, isLoading, onCancel, onSub
       </div>
 
       <div className="mt-4 flex flex-col-reverse gap-2 border-t pt-3 sm:flex-row sm:justify-end">
-        <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={onCancel}>Cancel</Button>
+        <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={onCancel}>{t('common.cancel')}</Button>
         <Button type="submit" className="w-full sm:w-auto" disabled={isLoading}>
-          {isLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving...</> : mode === 'create' ? 'Create User' : 'Update User'}
+          {isLoading ? <><Loader2 className="me-2 h-4 w-4 animate-spin" />{t('common.saving')}</> : mode === 'create' ? t('users.createUser') : t('users.updateUser')}
         </Button>
       </div>
     </form>
@@ -301,7 +312,7 @@ function Field({ label, required, children }: { label: string; required?: boolea
     <div className="space-y-1">
       <Label>
         {label}
-        {required && <span className="ml-1 text-destructive">*</span>}
+        {required && <span className="ms-1 text-destructive">*</span>}
       </Label>
       {children}
     </div>
@@ -335,17 +346,18 @@ function Select({
 }
 
 function UserDetails({ user, onClose }: { user: IUser; onClose: () => void }) {
+  const { t } = useTranslation();
   const rows = [
-    ['Username', `@${user.username}`],
-    ['Email', user.email],
-    ['Phone', user.phone || '-'],
-    ['Role', relationName(user.role, user.roleId)],
-    ['Company / Utility', relationName(user.company, user.companyId)],
-    ['Department', relationName(user.department, user.departmentId)],
-    ['Designation', relationName(user.designation, user.designationId)],
-    ['Category', user.userCategory],
-    ['Created', user.createdAt ? new Date(user.createdAt).toLocaleString() : '-'],
-    ['Updated', user.updatedAt ? new Date(user.updatedAt).toLocaleString() : '-'],
+    [t('auth.username'), `@${user.username}`],
+    [t('auth.email'), user.email],
+    [t('auth.phone'), user.phone || t('common.dash')],
+    [t('auth.role'), relationName(user.role, user.roleId)],
+    [t('users.companyUtility'), relationName(user.company, user.companyId)],
+    [t('auth.department'), relationName(user.department, user.departmentId)],
+    [t('auth.designation'), relationName(user.designation, user.designationId)],
+    [t('dashboard.category'), user.userCategory],
+    [t('users.created'), user.createdAt ? new Date(user.createdAt).toLocaleString() : t('common.dash')],
+    [t('users.updated'), user.updatedAt ? new Date(user.updatedAt).toLocaleString() : t('common.dash')],
   ];
 
   return (
@@ -361,7 +373,7 @@ function UserDetails({ user, onClose }: { user: IUser; onClose: () => void }) {
             </div>
           </div>
         </div>
-        <Button type="button" size="icon" variant="ghost" onClick={onClose} aria-label="Close details">
+        <Button type="button" size="icon" variant="ghost" onClick={onClose} aria-label={t('users.closeDetails')}>
           <X className="h-4 w-4" />
         </Button>
       </div>
@@ -380,6 +392,7 @@ function UserDetails({ user, onClose }: { user: IUser; onClose: () => void }) {
 export function UserTable({ category, title }: Props) {
   const qc = useQueryClient();
   const { canAny } = useAuth();
+  const { t } = useTranslation();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [showCreate, setShowCreate] = useState(false);
@@ -423,10 +436,10 @@ export function UserTable({ category, title }: Props) {
     try {
       await createMut.mutateAsync(values);
       invalidate();
-      toast({ title: 'User created' });
+      toast({ title: t('users.userCreated') });
       setShowCreate(false);
     } catch (e) {
-      toast({ title: 'Error', description: apiErrorMessage(e), variant: 'destructive' });
+      toast({ title: t('common.error'), description: apiErrorMessage(e), variant: 'destructive' });
       throw e;
     } finally {
       setSaving(false);
@@ -439,10 +452,10 @@ export function UserTable({ category, title }: Props) {
     try {
       await updateMut.mutateAsync({ id: editUser.id, body: values });
       invalidate();
-      toast({ title: 'User updated' });
+      toast({ title: t('users.userUpdated') });
       setEditUser(null);
     } catch (e) {
-      toast({ title: 'Error', description: apiErrorMessage(e), variant: 'destructive' });
+      toast({ title: t('common.error'), description: apiErrorMessage(e), variant: 'destructive' });
       throw e;
     } finally {
       setSaving(false);
@@ -450,14 +463,14 @@ export function UserTable({ category, title }: Props) {
   }
 
   async function onDelete(id: string) {
-    if (!confirm('Delete this user?')) return;
+    if (!confirm(t('users.deleteConfirm'))) return;
     try {
       await deleteMut.mutateAsync(id);
       invalidate();
-      toast({ title: 'User deleted' });
+      toast({ title: t('users.userDeleted') });
       if (viewUser?.id === id) setViewUser(null);
     } catch (e) {
-      toast({ title: 'Error', description: apiErrorMessage(e), variant: 'destructive' });
+      toast({ title: t('common.error'), description: apiErrorMessage(e), variant: 'destructive' });
     }
   }
 
@@ -467,7 +480,7 @@ export function UserTable({ category, title }: Props) {
       await statusMut.mutateAsync({ id: u.id, status: newStatus });
       invalidate();
     } catch (e) {
-      toast({ title: 'Error', description: apiErrorMessage(e), variant: 'destructive' });
+      toast({ title: t('common.error'), description: apiErrorMessage(e), variant: 'destructive' });
     }
   }
 
@@ -481,19 +494,19 @@ export function UserTable({ category, title }: Props) {
   const totalPages = Math.ceil((data?.total ?? 0) / PAGE_SIZE);
 
   if (!canRead) {
-    return <div className="rounded-md border bg-card p-6 text-sm text-muted-foreground">You do not have permission to view {title.toLowerCase()} users.</div>;
+    return <div className="rounded-md border bg-card p-6 text-sm text-muted-foreground">{t('users.notAllowed', { type: title.toLowerCase() })}</div>;
   }
 
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div className="relative w-full sm:w-64">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input className="pl-8" placeholder="Search users..." value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} />
+          <Search className="absolute start-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input className="ps-8" placeholder={t('common.searchWithName', { name: t('users.users') })} value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} />
         </div>
         {canCreate && (
           <Button size="sm" className="w-full sm:w-auto" onClick={() => { setShowCreate(true); setEditUser(null); setViewUser(null); }}>
-            <Plus className="mr-1 h-4 w-4" /> Add User
+            <Plus className="me-1 h-4 w-4" /> {t('users.addUser')}
           </Button>
         )}
       </div>
@@ -512,8 +525,8 @@ export function UserTable({ category, title }: Props) {
         <table className="w-full text-sm">
           <thead className="bg-muted/50">
             <tr>
-              {['Name', 'Username', 'Email', 'Role', 'Company / Utility', 'Department', 'Status', ''].map((h) => (
-                <th key={h} className="px-4 py-3 text-left font-medium text-muted-foreground">{h}</th>
+              {[t('dashboard.name'), t('auth.username'), t('auth.email'), t('auth.role'), t('users.companyUtility'), t('auth.department'), t('users.status'), ''].map((h) => (
+                <th key={h} className="px-4 py-3 text-start font-medium text-muted-foreground">{h}</th>
               ))}
             </tr>
           </thead>
@@ -522,7 +535,7 @@ export function UserTable({ category, title }: Props) {
               <tr><td colSpan={8} className="text-center py-8"><Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" /></td></tr>
             )}
             {!isLoading && (data?.users ?? []).length === 0 && (
-              <tr><td colSpan={8} className="text-center py-8 text-muted-foreground">No users found.</td></tr>
+              <tr><td colSpan={8} className="text-center py-8 text-muted-foreground">{t('users.noUsers')}</td></tr>
             )}
             {!isLoading && (data?.users ?? []).map((u) => (
               <tr key={u.id} className="border-t hover:bg-muted/30 transition-colors">
@@ -567,7 +580,7 @@ export function UserTable({ category, title }: Props) {
 
       <div className="space-y-3 md:hidden">
         {isLoading && <div className="rounded-md border bg-card py-8 text-center"><Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" /></div>}
-        {!isLoading && (data?.users ?? []).length === 0 && <div className="rounded-md border bg-card px-4 py-8 text-center text-sm text-muted-foreground">No users found.</div>}
+        {!isLoading && (data?.users ?? []).length === 0 && <div className="rounded-md border bg-card px-4 py-8 text-center text-sm text-muted-foreground">{t('users.noUsers')}</div>}
         {!isLoading && (data?.users ?? []).map((u) => (
           <div key={u.id} className="rounded-md border bg-card p-4">
             <div className="flex items-start justify-between gap-3">
@@ -584,24 +597,24 @@ export function UserTable({ category, title }: Props) {
             </div>
 
             <div className="mt-4 grid gap-3 text-sm">
-              <DetailRow label="Username" value={`@${u.username}`} />
-              <DetailRow label="Role" value={relationName(u.role, u.roleId)} />
-              <DetailRow label="Company" value={relationName(u.company, u.companyId)} />
-              <DetailRow label="Department" value={relationName(u.department, u.departmentId)} />
+              <DetailRow label={t('auth.username')} value={`@${u.username}`} />
+              <DetailRow label={t('auth.role')} value={relationName(u.role, u.roleId)} />
+              <DetailRow label={t('users.company')} value={relationName(u.company, u.companyId)} />
+              <DetailRow label={t('auth.department')} value={relationName(u.department, u.departmentId)} />
             </div>
 
             <div className="mt-4 flex gap-2 border-t pt-3">
-              <Button size="sm" variant="outline" className="flex-1" onClick={() => { setViewUser(u); setShowCreate(false); setEditUser(null); }}>
-                <Eye className="mr-2 h-3.5 w-3.5" /> View
+                <Button size="sm" variant="outline" className="flex-1" onClick={() => { setViewUser(u); setShowCreate(false); setEditUser(null); }}>
+                <Eye className="me-2 h-3.5 w-3.5" /> {t('common.view')}
               </Button>
               {canUpdate && (
                 <Button size="sm" variant="outline" className="flex-1" onClick={() => { setEditUser(u); setShowCreate(false); setViewUser(null); }}>
-                  <Pencil className="mr-2 h-3.5 w-3.5" /> Edit
+                  <Pencil className="me-2 h-3.5 w-3.5" /> {t('common.edit')}
                 </Button>
               )}
               {canDelete && (
                 <Button size="sm" variant="outline" className="flex-1 text-destructive hover:text-destructive" onClick={() => onDelete(u.id)}>
-                  <Trash2 className="mr-2 h-3.5 w-3.5" /> Delete
+                  <Trash2 className="me-2 h-3.5 w-3.5" /> {t('common.delete')}
                 </Button>
               )}
             </div>
@@ -611,11 +624,11 @@ export function UserTable({ category, title }: Props) {
 
       {totalPages > 1 && (
         <div className="flex flex-col gap-3 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
-          <span>{data?.total ?? 0} total users</span>
+          <span>{t('users.totalUsers', { count: data?.total ?? 0 })}</span>
           <div className="flex items-center justify-between gap-2 sm:justify-end">
-            <Button size="sm" variant="outline" disabled={page === 1} onClick={() => setPage((p) => p - 1)}>Prev</Button>
+            <Button size="sm" variant="outline" disabled={page === 1} onClick={() => setPage((p) => p - 1)}>{t('common.prev')}</Button>
             <span>{page} / {totalPages}</span>
-            <Button size="sm" variant="outline" disabled={page === totalPages} onClick={() => setPage((p) => p + 1)}>Next</Button>
+            <Button size="sm" variant="outline" disabled={page === totalPages} onClick={() => setPage((p) => p + 1)}>{t('common.next')}</Button>
           </div>
         </div>
       )}

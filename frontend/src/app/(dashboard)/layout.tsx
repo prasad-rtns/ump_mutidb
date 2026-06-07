@@ -5,13 +5,16 @@ import { Menu, X } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth.store';
 import { Sidebar } from '@/components/layout/sidebar';
 import { Button } from '@/components/ui/button';
+import { LanguageSwitcher } from '@/components/language/language-switcher';
 import { authApi } from '@/lib/api';
+import { useTranslation } from '@/i18n';
 import type { IUser } from '@/types';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, hasHydrated, user, updateUser } = useAuthStore();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const router = useRouter();
+  const { direction, t } = useTranslation();
 
   useEffect(() => {
     if (hasHydrated && !isAuthenticated) router.replace('/login');
@@ -49,13 +52,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           variant="ghost"
           className="h-9 w-9"
           onClick={() => setMobileNavOpen(true)}
-          aria-label="Open navigation"
+          aria-label={t('layout.openNavigation')}
         >
           <Menu className="h-5 w-5" />
         </Button>
         <div className="min-w-0">
-          <p className="truncate text-sm font-semibold">UMP Admin</p>
+          <p className="truncate text-sm font-semibold">{t('app.name')}</p>
           <p className="truncate text-xs text-muted-foreground">{user?.email}</p>
+        </div>
+        <div className="ms-auto">
+          <LanguageSwitcher compact />
         </div>
       </div>
 
@@ -64,17 +70,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <button
             type="button"
             className="absolute inset-0 bg-black/50"
-            aria-label="Close navigation"
+            aria-label={t('layout.closeNavigation')}
             onClick={() => setMobileNavOpen(false)}
           />
-          <div className="relative h-full w-[min(20rem,calc(100vw-3rem))] shadow-xl">
+          <div className={`relative h-full w-[min(20rem,calc(100vw-3rem))] shadow-xl ${direction === 'rtl' ? 'ms-auto' : ''}`}>
             <Button
               type="button"
               size="icon"
               variant="ghost"
-              className="absolute right-2 top-2 z-10 h-9 w-9 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+              className="absolute end-2 top-2 z-10 h-9 w-9 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
               onClick={() => setMobileNavOpen(false)}
-              aria-label="Close navigation"
+              aria-label={t('layout.closeNavigation')}
             >
               <X className="h-5 w-5" />
             </Button>
