@@ -1,11 +1,9 @@
 'use client';
-import { useQuery } from '@tanstack/react-query';
-import { authApi } from '@/lib/api';
 import { ActiveBadge, RbmsConfig, RbmsTable } from '@/components/user-management/rbms-table';
 import { Badge } from '@/components/ui/badge';
-import type { IDepartment, IModuleMenu } from '@/types';
 import { useTranslation } from '@/i18n';
 import { translatedModuleName } from '@/lib/module-translations';
+import { useAuthMasterDepartments, useAuthMasterModules } from '@/hooks/use-auth-master-data';
 
 interface Props { params: { entity: string } }
 
@@ -38,16 +36,8 @@ function moduleTypeLabel(value: unknown, t: (key: string, params?: TranslationPa
 export default function UserManagementEntityPage({ params }: Props) {
   const { entity } = params;
   const { t } = useTranslation();
-  const { data: departments } = useQuery<IDepartment[]>({
-    queryKey: ['um', 'departments', 'select'],
-    queryFn: async () => (await authApi.get('/auth/master/departments')).data.data,
-    enabled: entity === 'designations',
-  });
-  const { data: modules } = useQuery<IModuleMenu[]>({
-    queryKey: ['um', 'modules', 'select'],
-    queryFn: async () => (await authApi.get('/auth/master/modules')).data.data,
-    enabled: entity === 'modules',
-  });
+  const { data: departments } = useAuthMasterDepartments(entity === 'designations');
+  const { data: modules } = useAuthMasterModules(entity === 'modules');
 
   const configs: Record<string, RbmsConfig> = {
     roles: {

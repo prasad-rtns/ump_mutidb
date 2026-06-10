@@ -387,7 +387,8 @@ INSERT IGNORE INTO system_settings (`key`, value, type, description, is_public, 
     ('auth.max_login_attempts', '5', 'number', 'Max failed login attempts before lockout', 0, 'security'),
     ('auth.lock_duration_minutes', '30', 'number', 'Account lock duration in minutes', 0, 'security'),
     ('email.from', 'noreply@ump-platform.com', 'string', 'Default sender email', 0, 'email'),
-    ('storage.provider', 'local', 'string', 'Default storage provider', 0, 'storage');
+    ('storage.provider', 'local', 'string', 'Default storage provider', 0, 'storage'),
+    ('ui.grid.rowsPerPage', '20', 'number', 'Rows shown per page in all frontend grids and tables', 1, 'ui');
 
 USE ump_documents;
 

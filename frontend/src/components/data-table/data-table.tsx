@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { DynamicForm } from '@/components/dynamic-form/dynamic-form';
+import { PaginationControls } from '@/components/pagination/pagination-controls';
 import { formatDate } from '@/lib/utils';
 import { useTranslation } from '@/i18n';
 
@@ -15,6 +16,7 @@ interface DataTableProps<T extends Record<string, unknown>> {
   data: T[];
   total: number;
   page: number;
+  pageSize: number;
   isLoading?: boolean;
   canCreate?: boolean;
   canUpdate?: boolean;
@@ -27,8 +29,6 @@ interface DataTableProps<T extends Record<string, unknown>> {
   selectOptions?: Record<string, { value: string; label: string }[]>;
   columnLabels?: Record<string, string>;
 }
-
-const PAGE_SIZE = 20;
 
 function BooleanCell({ value }: { value: boolean }) {
   const { t } = useTranslation();
@@ -45,7 +45,7 @@ function renderCell(value: unknown): React.ReactNode {
 }
 
 export function DataTable<T extends Record<string, unknown>>({
-  meta, data, total, page, isLoading,
+  meta, data, total, page, pageSize, isLoading,
   canCreate = false, canUpdate = false, canDelete = false,
   onPageChange, onSearch, onCreate, onUpdate, onDelete,
   selectOptions = {}, columnLabels = {},
@@ -58,7 +58,6 @@ export function DataTable<T extends Record<string, unknown>>({
 
   const idField = meta.idField;
   const columns = meta.listColumns;
-  const totalPages = Math.ceil(total / PAGE_SIZE);
 
   function colLabel(col: string) {
     if (columnLabels[col]) return columnLabels[col];
@@ -203,16 +202,7 @@ export function DataTable<T extends Record<string, unknown>>({
         ))}
       </div>
 
-      {totalPages > 1 && (
-        <div className="flex flex-col gap-3 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
-          <span>{t('common.totalRecords', { count: total })}</span>
-          <div className="flex items-center justify-between gap-2 sm:justify-end">
-            <Button size="sm" variant="outline" disabled={page === 1} onClick={() => onPageChange(page - 1)}>{t('common.prev')}</Button>
-            <span>{page} / {totalPages}</span>
-            <Button size="sm" variant="outline" disabled={page === totalPages} onClick={() => onPageChange(page + 1)}>{t('common.next')}</Button>
-          </div>
-        </div>
-      )}
+      <PaginationControls page={page} pageSize={pageSize} total={total} onPageChange={onPageChange} />
     </div>
   );
 }

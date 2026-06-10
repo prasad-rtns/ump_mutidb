@@ -31,6 +31,7 @@ export const useAuthStore = create<AuthState>()(
       clearAuth: () => {
         Cookies.remove('access_token');
         Cookies.remove('refresh_token');
+        if (typeof window !== 'undefined') window.localStorage.removeItem('ump-public-settings');
         set({ user: null, accessToken: null, isAuthenticated: false });
       },
 

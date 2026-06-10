@@ -5,11 +5,13 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Eye, Loader2, Pencil, Plus, Search, Trash2, Upload, UserRound, X } from 'lucide-react';
 import { authApi, apiErrorMessage, documentApi } from '@/lib/api';
 import { useAuth } from '@/hooks/use-auth';
+import { usePaginationSettings } from '@/hooks/use-pagination-settings';
 import { toast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
+import { PaginationControls } from '@/components/pagination/pagination-controls';
 import { useTranslation } from '@/i18n';
 import type { IUser, IDepartment, IRole, IDesignation, ICompanyOrUtility, UserCategory } from '@/types';
 
@@ -48,7 +50,6 @@ interface UploadedDocument {
   size: number;
 }
 
-const PAGE_SIZE = 20;
 const PROFILE_PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 const PROFILE_PHOTO_MAX_BYTES = 2 * 1024 * 1024;
 
@@ -399,6 +400,7 @@ export function UserTable({ category, title }: Props) {
   const [editUser, setEditUser] = useState<IUser | null>(null);
   const [viewUser, setViewUser] = useState<IUser | null>(null);
   const [saving, setSaving] = useState(false);
+  const { rowsPerPage } = usePaginationSettings();
   const permissionSet = CATEGORY_PERMISSIONS[category];
 
   const canRead = canAny(permissionSet.read);
@@ -406,19 +408,26 @@ export function UserTable({ category, title }: Props) {
   const canUpdate = canAny(permissionSet.update);
   const canDelete = canAny(permissionSet.delete);
 
+  useEffect(() => {
+    setPage(1);
+  }, [rowsPerPage]);
+
   const { data: roles } = useQuery<IRole[]>({ queryKey: ['roles'], queryFn: async () => (await authApi.get('/auth/master/roles')).data.data });
   const { data: companies } = useQuery<ICompanyOrUtility[]>({ queryKey: ['companies'], queryFn: async () => (await authApi.get('/auth/master/companies')).data.data });
   const { data: departments } = useQuery<IDepartment[]>({ queryKey: ['departments'], queryFn: async () => (await authApi.get('/auth/master/departments')).data.data });
   const { data: designations } = useQuery<IDesignation[]>({ queryKey: ['designations'], queryFn: async () => (await authApi.get('/auth/master/designations')).data.data });
 
   const { data, isLoading } = useQuery({
-    queryKey: ['users', category, page, search],
+    queryKey: ['users', category, page, search, rowsPerPage],
     queryFn: async () => {
-      const params = new URLSearchParams({ page: String(page), limit: String(PAGE_SIZE), userCategory: category });
+      const params = new URLSearchParams({ page: String(page), limit: String(rowsPerPage), userCategory: category });
       if (search) params.set('search', search);
       const { data } = await authApi.get(`/users?${params}`);
       const payload = data.data;
-      if (Array.isArray(payload)) return { users: payload as IUser[], total: payload.length };
+      if (Array.isArray(payload)) {
+        const start = (page - 1) * rowsPerPage;
+        return { users: payload.slice(start, start + rowsPerPage) as IUser[], total: payload.length };
+      }
       return { users: (payload.data ?? []) as IUser[], total: payload.total ?? 0 };
     },
     enabled: canRead,
@@ -484,14 +493,18 @@ export function UserTable({ category, title }: Props) {
     }
   }
 
+  useEffect(() => {
+    const total = data?.total ?? 0;
+    const maxPage = Math.max(1, Math.ceil(total / rowsPerPage));
+    if (page > maxPage) setPage(maxPage);
+  }, [data?.total, page, rowsPerPage]);
+
   const selectOptions = {
     roleId: roles?.map((r) => ({ value: r.id, label: r.name })) ?? [],
     companyId: companies?.map((c) => ({ value: c.id, label: `${c.name} (${c.type})` })) ?? [],
     departmentId: departments?.map((d) => ({ value: d.id, label: d.name })) ?? [],
     designationId: designations?.map((d) => ({ value: d.id, label: d.name })) ?? [],
   };
-
-  const totalPages = Math.ceil((data?.total ?? 0) / PAGE_SIZE);
 
   if (!canRead) {
     return <div className="rounded-md border bg-card p-6 text-sm text-muted-foreground">{t('users.notAllowed', { type: title.toLowerCase() })}</div>;
@@ -622,16 +635,7 @@ export function UserTable({ category, title }: Props) {
         ))}
       </div>
 
-      {totalPages > 1 && (
-        <div className="flex flex-col gap-3 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
-          <span>{t('users.totalUsers', { count: data?.total ?? 0 })}</span>
-          <div className="flex items-center justify-between gap-2 sm:justify-end">
-            <Button size="sm" variant="outline" disabled={page === 1} onClick={() => setPage((p) => p - 1)}>{t('common.prev')}</Button>
-            <span>{page} / {totalPages}</span>
-            <Button size="sm" variant="outline" disabled={page === totalPages} onClick={() => setPage((p) => p + 1)}>{t('common.next')}</Button>
-          </div>
-        </div>
-      )}
+      <PaginationControls page={page} pageSize={rowsPerPage} total={data?.total ?? 0} onPageChange={setPage} itemLabel={t('users.users')} />
     </div>
   );
 }

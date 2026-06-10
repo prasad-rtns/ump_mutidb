@@ -323,6 +323,26 @@ CREATE TABLE IF NOT EXISTS system_settings (
     updated_at TIMESTAMP DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS service_types (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name VARCHAR(200) NOT NULL,
+    code VARCHAR(50) NOT NULL UNIQUE,
+    description TEXT,
+    route_link VARCHAR(500),
+    icon VARCHAR(100),
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+
+ALTER TABLE service_types ADD COLUMN IF NOT EXISTS description TEXT;
+ALTER TABLE service_types ADD COLUMN IF NOT EXISTS route_link VARCHAR(500);
+ALTER TABLE service_types ADD COLUMN IF NOT EXISTS icon VARCHAR(100);
+ALTER TABLE service_types ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE;
+ALTER TABLE service_types ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT NOW();
+ALTER TABLE service_types ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT NOW();
+UPDATE service_types SET is_active = TRUE WHERE is_active IS NULL;
+
 CREATE TABLE IF NOT EXISTS notification_templates (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name VARCHAR(200) NOT NULL,
@@ -359,6 +379,13 @@ INSERT INTO document_types (name, code, allowed_mime_types, max_size_mb) VALUES
     ('Report', 'REPORT', '["application/pdf","application/vnd.openxmlformats-officedocument.wordprocessingml.document"]', 50)
 ON CONFLICT (code) DO NOTHING;
 
+-- Seed service types
+INSERT INTO service_types (name, code, description, route_link, icon) VALUES
+    ('Employee Services', 'EMPLOYEE_SERVICES', 'Employee onboarding and profile management services', '/services/employees', 'users'),
+    ('Document Services', 'DOCUMENT_SERVICES', 'Document upload, review, and approval services', '/services/documents', 'file-text'),
+    ('Master Data Services', 'MASTER_DATA_SERVICES', 'Reference data and platform configuration services', '/services/master-data', 'layers')
+ON CONFLICT (code) DO NOTHING;
+
 -- Seed system settings
 INSERT INTO system_settings (key, value, type, description, is_public, category) VALUES
     ('app.name', 'User Management Platform', 'string', 'Application name', TRUE, 'general'),
@@ -366,5 +393,6 @@ INSERT INTO system_settings (key, value, type, description, is_public, category)
     ('auth.max_login_attempts', '5', 'number', 'Max failed login attempts before lockout', FALSE, 'security'),
     ('auth.lock_duration_minutes', '30', 'number', 'Account lock duration in minutes', FALSE, 'security'),
     ('email.from', 'noreply@ump-platform.com', 'string', 'Default sender email', FALSE, 'email'),
-    ('storage.provider', 'local', 'string', 'Default storage provider', FALSE, 'storage')
+    ('storage.provider', 'local', 'string', 'Default storage provider', FALSE, 'storage'),
+    ('ui.grid.rowsPerPage', '20', 'number', 'Rows shown per page in all frontend grids and tables', TRUE, 'ui')
 ON CONFLICT (key) DO NOTHING;

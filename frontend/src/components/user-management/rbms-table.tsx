@@ -1,17 +1,20 @@
 'use client';
 import type React from 'react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Check, ChevronDown, ChevronRight, Loader2, LockKeyhole, Pencil, Plus, Search, ShieldCheck, Trash2, X } from 'lucide-react';
 import { authApi, apiErrorMessage } from '@/lib/api';
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
+import { queryFnForAuthMasterEndpoint, queryKeyForAuthMasterEndpoint, useAuthMasterModules } from '@/hooks/use-auth-master-data';
+import { usePaginationSettings } from '@/hooks/use-pagination-settings';
 import { useSchemaCatalogue } from '@/hooks/use-schema';
 import { mergeModulesWithMasterSchema, permissionListForModules } from '@/lib/dynamic-modules';
 import { translatedModuleName } from '@/lib/module-translations';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { PaginationControls } from '@/components/pagination/pagination-controls';
 import type { IModuleMenu } from '@/types';
 import { useTranslation } from '@/i18n';
 
@@ -121,10 +124,7 @@ function PermissionSelector({
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const selected = useMemo(() => new Set(value), [value]);
 
-  const modulesQuery = useQuery<IModuleMenu[]>({
-    queryKey: ['um', 'modules', 'permission-selector'],
-    queryFn: async () => (await authApi.get('/auth/master/modules')).data.data,
-  });
+  const modulesQuery = useAuthMasterModules();
   const { data: schemas, isLoading: schemasLoading } = useSchemaCatalogue();
 
   const modules = useMemo(
@@ -564,9 +564,11 @@ export function RbmsTable({ config }: { config: RbmsConfig }) {
   const { canAny } = useAuth();
   const { t } = useTranslation();
   const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<Record<string, unknown> | null>(null);
   const [saving, setSaving] = useState(false);
+  const { rowsPerPage } = usePaginationSettings();
 
   const canRead = !config.permissions?.read || canAny(config.permissions.read);
   const canCreate = !config.permissions?.create || canAny(config.permissions.create);
@@ -574,8 +576,8 @@ export function RbmsTable({ config }: { config: RbmsConfig }) {
   const canDelete = !config.permissions?.delete || canAny(config.permissions.delete);
 
   const query = useQuery<Record<string, unknown>[]>({
-    queryKey: ['rbms', config.endpoint],
-    queryFn: async () => (await authApi.get(config.endpoint)).data.data,
+    queryKey: queryKeyForAuthMasterEndpoint(config.endpoint),
+    queryFn: queryFnForAuthMasterEndpoint(config.endpoint),
     enabled: canRead,
   });
 
@@ -590,6 +592,20 @@ export function RbmsTable({ config }: { config: RbmsConfig }) {
     if (!needle) return all;
     return all.filter((row) => JSON.stringify(row).toLowerCase().includes(needle));
   }, [query.data, search]);
+
+  const pagedRows = useMemo(() => {
+    const start = (page - 1) * rowsPerPage;
+    return rows.slice(start, start + rowsPerPage);
+  }, [page, rows, rowsPerPage]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [rowsPerPage, search]);
+
+  useEffect(() => {
+    const maxPage = Math.max(1, Math.ceil(rows.length / rowsPerPage));
+    if (page > maxPage) setPage(maxPage);
+  }, [page, rows.length, rowsPerPage]);
 
   async function save(row: Record<string, unknown> | null, body: Record<string, unknown>) {
     if ((row && !canUpdate) || (!row && !canCreate)) return;
@@ -662,7 +678,7 @@ export function RbmsTable({ config }: { config: RbmsConfig }) {
               <tbody>
                 {query.isLoading && <tr><td className="py-8 text-center" colSpan={config.columns.length + 1}><Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" /></td></tr>}
                 {!query.isLoading && rows.length === 0 && <tr><td className="py-8 text-center text-muted-foreground" colSpan={config.columns.length + 1}>{t('common.noRecords')}</td></tr>}
-                {!query.isLoading && rows.map((row) => (
+                {!query.isLoading && pagedRows.map((row) => (
                   <tr key={String(row[idField])} className="border-t hover:bg-muted/30">
                     {config.columns.map((column) => (
                       <td key={column.key} className="px-4 py-3">
@@ -692,7 +708,7 @@ export function RbmsTable({ config }: { config: RbmsConfig }) {
                 {t('common.noRecords')}
               </div>
             )}
-            {!query.isLoading && rows.map((row) => (
+            {!query.isLoading && pagedRows.map((row) => (
               <div key={String(row[idField])} className="rounded-md border bg-card p-4">
                 <div className="space-y-3">
                   {config.columns.map((column) => (
@@ -721,6 +737,8 @@ export function RbmsTable({ config }: { config: RbmsConfig }) {
               </div>
             ))}
           </div>
+
+          <PaginationControls page={page} pageSize={rowsPerPage} total={rows.length} onPageChange={setPage} />
         </>
       )}
     </div>

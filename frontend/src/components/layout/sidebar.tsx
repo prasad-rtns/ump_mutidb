@@ -3,7 +3,6 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import type React from 'react';
 import { useMemo, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
 import {
   BadgeCheck,
   Building2,
@@ -28,7 +27,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { useSchemaCatalogue } from '@/hooks/use-schema';
-import { authApi } from '@/lib/api';
+import { useAuthMasterModules } from '@/hooks/use-auth-master-data';
 import { cn } from '@/lib/utils';
 import { LanguageSwitcher } from '@/components/language/language-switcher';
 import { useTranslation } from '@/i18n';
@@ -118,11 +117,7 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
   const { direction, t } = useTranslation();
   const [open, setOpen] = useState<Record<string, boolean>>({});
 
-  const { data: modules = [] } = useQuery<IModuleMenu[]>({
-    queryKey: ['sidebar', 'modules'],
-    queryFn: async () => (await authApi.get('/auth/master/modules')).data.data,
-    staleTime: 5 * 60 * 1000,
-  });
+  const { data: modules = [] } = useAuthMasterModules();
   const { data: schemas } = useSchemaCatalogue();
   const effectiveModules = useMemo(() => mergeModulesWithMasterSchema(modules, schemas), [modules, schemas]);
 

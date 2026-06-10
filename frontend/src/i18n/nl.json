@@ -78,6 +78,15 @@
     "noneRoot": "Geen (root)",
     "manageName": "Beheer {{name}}"
   },
+  "pagination": {
+    "records": "records",
+    "of": "van",
+    "rowsPerPage": "{{count}} rijen per pagina",
+    "firstPage": "Eerste pagina",
+    "lastPage": "Laatste pagina",
+    "systemSettingTitle": "Rijen per pagina worden beheerd via Systeeminstellingen",
+    "systemSettingHelp": "Maak of werk de openbare nummerinstelling {{key}} bij om te bepalen hoeveel rijen alle grids en tabellen per pagina tonen."
+  },
   "dashboard": {
     "welcome": "Welkom, {{name}}!",
     "overview": "Hier is een overzicht van uw platform.",

@@ -397,6 +397,13 @@ BEGIN
 END
 GO
 
+IF NOT EXISTS (SELECT 1 FROM dbo.system_settings WHERE [key] = N'ui.grid.rowsPerPage')
+BEGIN
+  INSERT INTO dbo.system_settings (id, [key], value, [type], description, category, is_public)
+  VALUES (CONVERT(NVARCHAR(36), NEWID()), N'ui.grid.rowsPerPage', N'20', N'number', N'Rows shown per page in all frontend grids and tables', N'ui', 1);
+END
+GO
+
 USE ump_documents;
 GO
 

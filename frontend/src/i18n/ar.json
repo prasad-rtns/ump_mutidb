@@ -78,6 +78,15 @@
     "noneRoot": "لا يوجد (جذر)",
     "manageName": "إدارة {{name}}"
   },
+  "pagination": {
+    "records": "سجلات",
+    "of": "من",
+    "rowsPerPage": "{{count}} صفوف لكل صفحة",
+    "firstPage": "الصفحة الأولى",
+    "lastPage": "الصفحة الأخيرة",
+    "systemSettingTitle": "تتم إدارة الصفوف لكل صفحة من إعدادات النظام",
+    "systemSettingHelp": "أنشئ أو حدث إعداد الرقم العام {{key}} للتحكم في عدد الصفوف التي تعرضها كل الجداول والشبكات في كل صفحة."
+  },
   "dashboard": {
     "welcome": "مرحبا، {{name}}!",
     "overview": "إليك نظرة عامة على منصتك.",
