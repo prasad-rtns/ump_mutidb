@@ -35,6 +35,12 @@ import type {
 } from '../../modules/coredata/coredata.types';
 
 const now = () => new Date();
+const nullableId = (value?: string | null) => value && value.trim() ? value : null;
+const numericValue = (value: unknown, fallback = 0) => {
+  if (value === undefined || value === null || value === '') return fallback;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+};
 
 /* ───────────────── Helper ───────────────── */
 
@@ -331,11 +337,11 @@ export class OracleCategoryDAL implements ICategoryDAL {
       id: randomUUID(),
       name: data.name,
       code: data.code,
-      parentId: data.parentId ?? null,
+      parentId: nullableId(data.parentId),
       description: data.description ?? null,
       icon: data.icon ?? null,
       metadata: data.metadata ?? null,
-      sortOrder: data.sortOrder ?? 0,
+      sortOrder: numericValue(data.sortOrder),
       isActive: true,
       createdAt: now(),
       updatedAt: now(),
@@ -366,7 +372,13 @@ export class OracleCategoryDAL implements ICategoryDAL {
         sort_order = NVL(:sortOrder, sort_order),
         updated_at = :updatedAt
        WHERE id = :id`,
-      { id, ...data, updatedAt: now() }
+      {
+        id,
+        ...data,
+        parentId: data.parentId !== undefined ? nullableId(data.parentId) : null,
+        sortOrder: data.sortOrder !== undefined ? numericValue(data.sortOrder) : undefined,
+        updatedAt: now(),
+      }
     );
 
     return this.findById(id);

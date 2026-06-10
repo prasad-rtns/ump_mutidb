@@ -35,6 +35,12 @@ import type {
 } from '../../modules/coredata/coredata.types';
 
 const now = () => new Date();
+const nullableId = (value?: string | null) => value && value.trim() ? value : null;
+const numericValue = (value: unknown, fallback = 0) => {
+  if (value === undefined || value === null || value === '') return fallback;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+};
 
 /* ───────────────── Country ───────────────── */
 
@@ -254,12 +260,12 @@ export class MongoCategoryDAL implements ICategoryDAL {
         name: data.name,
         code: data.code,
 
-        parentId: data.parentId ?? null,
+        parentId: nullableId(data.parentId),
         description: data.description ?? null,
         icon: data.icon ?? null,
         metadata: data.metadata ?? null,
 
-        sortOrder: data.sortOrder ?? 0,
+        sortOrder: numericValue(data.sortOrder),
 
         isActive: true,
         createdAt: now(),
@@ -275,11 +281,11 @@ export class MongoCategoryDAL implements ICategoryDAL {
     const updateData: Partial<Category> = {
         ...(data.name !== undefined && { name: data.name }),
         ...(data.code !== undefined && { code: data.code }),
-        ...(data.parentId !== undefined && { parentId: data.parentId ?? null }),
+        ...(data.parentId !== undefined && { parentId: nullableId(data.parentId) }),
         ...(data.description !== undefined && { description: data.description ?? null }),
         ...(data.icon !== undefined && { icon: data.icon ?? null }),
         ...(data.metadata !== undefined && { metadata: data.metadata ?? null }),
-        ...(data.sortOrder !== undefined && { sortOrder: data.sortOrder }),
+        ...(data.sortOrder !== undefined && { sortOrder: numericValue(data.sortOrder) }),
         updatedAt: now(),
     };
 

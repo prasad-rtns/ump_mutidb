@@ -7,6 +7,12 @@ import type { Country, State, City, Category, Tag, DocumentType, SystemSetting, 
 
 type PgDB = NodePgDatabase<Record<string, never>>;
 const now = () => new Date();
+const nullableId = (value?: string | null) => value && value.trim() ? value : null;
+const numericValue = (value: unknown, fallback = 0) => {
+  if (value === undefined || value === null || value === '') return fallback;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+};
 
 // ─── Country DAL ──────────────────────────────────────────────────────────────
 export class PgCountryDAL implements ICountryDAL {
@@ -47,8 +53,36 @@ export class PgCategoryDAL implements ICategoryDAL {
   async findById(id: string)                  { const r = await this.db.select().from(categories).where(eq(categories.id, id)).limit(1); return (r[0] as Category) ?? null; }
   async findByCode(code: string)              { const r = await this.db.select().from(categories).where(eq(categories.code, code)).limit(1); return (r[0] as Category) ?? null; }
   async search(query: string)                 { return this.db.select().from(categories).where(ilike(categories.name, `%${query}%`)) as Promise<Category[]>; }
-  async create(data: CreateCategoryDTO) { const r = await this.db.insert(categories).values({ id: uuidv4(), ...(data as any), sortOrder: data.sortOrder ?? 0, isActive: true, createdAt: now(), updatedAt: now() }).returning(); return r[0] as Category; }
-  async update(id: string, data: UpdateCategoryDTO) { const r = await this.db.update(categories).set({ ...(data as any), updatedAt: now() }).where(eq(categories.id, id)).returning(); return (r[0] as Category) ?? null; }
+  async create(data: CreateCategoryDTO) {
+    const r = await this.db.insert(categories).values({
+      id: uuidv4(),
+      name: data.name,
+      code: data.code,
+      parentId: nullableId(data.parentId),
+      description: data.description || null,
+      icon: data.icon || null,
+      metadata: data.metadata ?? null,
+      sortOrder: numericValue(data.sortOrder),
+      isActive: true,
+      createdAt: now(),
+      updatedAt: now(),
+    }).returning();
+    return r[0] as Category;
+  }
+  async update(id: string, data: UpdateCategoryDTO) {
+    const updateData = {
+      ...(data.name !== undefined && { name: data.name }),
+      ...(data.code !== undefined && { code: data.code }),
+      ...(data.parentId !== undefined && { parentId: nullableId(data.parentId) }),
+      ...(data.description !== undefined && { description: data.description || null }),
+      ...(data.icon !== undefined && { icon: data.icon || null }),
+      ...(data.metadata !== undefined && { metadata: data.metadata ?? null }),
+      ...(data.sortOrder !== undefined && { sortOrder: numericValue(data.sortOrder) }),
+      updatedAt: now(),
+    };
+    const r = await this.db.update(categories).set(updateData).where(eq(categories.id, id)).returning();
+    return (r[0] as Category) ?? null;
+  }
   async delete(id: string) { const r = await this.db.update(categories).set({ isActive: false, updatedAt: now() }).where(eq(categories.id, id)).returning({ id: categories.id }); return r.length > 0; }
 }
 

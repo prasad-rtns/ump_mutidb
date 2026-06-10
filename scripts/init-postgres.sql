@@ -1,7 +1,10 @@
 -- ─── Create databases ─────────────────────────────────────────────────────────
-CREATE DATABASE ump_auth;
-CREATE DATABASE ump_master;
-CREATE DATABASE ump_documents;
+SELECT 'CREATE DATABASE ump_auth'
+WHERE NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = 'ump_auth')\gexec
+SELECT 'CREATE DATABASE ump_master'
+WHERE NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = 'ump_master')\gexec
+SELECT 'CREATE DATABASE ump_documents'
+WHERE NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = 'ump_documents')\gexec
 
 -- ─── Grant privileges ──────────────────────────────────────────────────────────
 GRANT ALL PRIVILEGES ON DATABASE ump_auth TO ump_user;

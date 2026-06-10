@@ -13,6 +13,12 @@ import type {
 import type { DocumentType, SystemSetting, UpsertSettingDTO, ServiceType, CreateServiceTypeDTO, UpdateServiceTypeDTO } from '../../modules/coredata/coredata.types';
 
 const now = () => new Date();
+const nullableId = (value?: string | null) => value && value.trim() ? value : null;
+const numericValue = (value: unknown, fallback = 0) => {
+  if (value === undefined || value === null || value === '') return fallback;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+};
 
 export class MssqlCountryDAL implements ICountryDAL {
   constructor(private pool: ConnectionPool) {}
@@ -225,8 +231,8 @@ export class MssqlCategoryDAL implements ICategoryDAL {
         const r = await this.pool.request()
             .input('name', data.name)
             .input('code', data.code)
-            .input('parentId', data.parentId)
-            .input('sortOrder', data.sortOrder ?? 0)    
+            .input('parentId', nullableId(data.parentId))
+            .input('sortOrder', numericValue(data.sortOrder))
             .query(`
                 INSERT INTO categories (id, name, code, parent_id, sort_order, is_active, created_at, updated_at)
                 OUTPUT INSERTED.*
@@ -239,8 +245,8 @@ export class MssqlCategoryDAL implements ICategoryDAL {
             .input('id', id)    
             .input('name', data.name)
             .input('code', data.code)
-            .input('parentId', data.parentId)
-            .input('sortOrder', data.sortOrder ?? 0)
+            .input('parentId', nullableId(data.parentId))
+            .input('sortOrder', numericValue(data.sortOrder))
             .query(`
                 UPDATE categories
                 SET name = @name, code = @code, parent_id = @parentId, sort_order = @sortOrder, updated_at = GETDATE()
