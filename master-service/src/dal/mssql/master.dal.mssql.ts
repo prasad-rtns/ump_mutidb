@@ -194,16 +194,6 @@ export class MssqlCategoryDAL implements ICategoryDAL {
         const r = await this.pool.request().query(q);
         return r.recordset;
     }
-    async findByParent(parentId: string | null) {
-        const r = await this.pool.request()
-            .input('parentId', parentId)
-            .query(`
-                SELECT * FROM categories
-                WHERE ${parentId === null ? 'parent_id IS NULL' : 'parent_id = @parentId'}
-                AND is_active = 1
-            `);
-        return r.recordset;
-    }
     async findById(id: string) {
         const r = await this.pool.request()
             .input('id', id)
@@ -231,12 +221,12 @@ export class MssqlCategoryDAL implements ICategoryDAL {
         const r = await this.pool.request()
             .input('name', data.name)
             .input('code', data.code)
-            .input('parentId', nullableId(data.parentId))
+            .input('categoryType', data.categoryType || 'admin category')
             .input('sortOrder', numericValue(data.sortOrder))
             .query(`
-                INSERT INTO categories (id, name, code, parent_id, sort_order, is_active, created_at, updated_at)
+                INSERT INTO categories (id, name, code, category_type, sort_order, is_active, created_at, updated_at)
                 OUTPUT INSERTED.*
-                VALUES (NEWID(), @name, @code, @parentId, @sortOrder, 1, GETDATE(), GETDATE())
+                VALUES (NEWID(), @name, @code, @categoryType, @sortOrder, 1, GETDATE(), GETDATE())
             `);
         return r.recordset[0];
     }   
@@ -245,11 +235,11 @@ export class MssqlCategoryDAL implements ICategoryDAL {
             .input('id', id)    
             .input('name', data.name)
             .input('code', data.code)
-            .input('parentId', nullableId(data.parentId))
+            .input('categoryType', data.categoryType || 'admin category')
             .input('sortOrder', numericValue(data.sortOrder))
             .query(`
                 UPDATE categories
-                SET name = @name, code = @code, parent_id = @parentId, sort_order = @sortOrder, updated_at = GETDATE()
+                SET name = @name, code = @code, category_type = @categoryType, sort_order = @sortOrder, updated_at = GETDATE()
                 OUTPUT INSERTED.*
                 WHERE id = @id
             `);

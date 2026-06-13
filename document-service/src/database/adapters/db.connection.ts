@@ -1,4 +1,4 @@
-import { DatabaseType } from '@prasad-rtns/shared';
+import { DatabaseType } from '@rtns/core';
 import logger from '../logger';
 
 // ─────────────────────────────────────────────────────────────────────────────

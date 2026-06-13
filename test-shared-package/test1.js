@@ -1,5 +1,5 @@
 // Test importing package
-const { ResponseUtil, DatabaseType } = require('@prasad-rtns/shared');
+const { ResponseUtil, DatabaseType } = require('@rtns/core');
 
 console.log('✅ Package imported successfully!');
 console.log('✅ ResponseUtil type:', typeof ResponseUtil);

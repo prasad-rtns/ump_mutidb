@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
-import { CacheService, JwtPayload, JwtUtil, ResponseUtil } from '@prasad-rtns/shared';
-import { DatabaseType } from '@prasad-rtns/shared';
+import { CacheService, JwtPayload, JwtUtil, ResponseUtil } from '@rtns/core';
+import { DatabaseType } from '@rtns/core';
 import { AuthProviderService } from '../modules/auth/auth-provider.service';
 import { DALFactory } from '../dal/dal.factory';
 

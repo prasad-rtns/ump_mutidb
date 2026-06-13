@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { asyncHandler } from '@prasad-rtns/shared';
+import { asyncHandler } from '@rtns/core';
 import { DocumentController } from './document.controller';
 import { uploadMiddleware, multerErrorHandler, validateProfilePhoto, virusScan } from '../../middleware/upload.middleware';
 import { authenticate, requireAnyPermission } from '../../middleware/auth.middleware';

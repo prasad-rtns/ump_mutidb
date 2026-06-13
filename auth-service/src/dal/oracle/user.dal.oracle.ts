@@ -2,7 +2,7 @@ import { v4 as uuidv4 } from 'uuid';
 import type { Pool as OraPool, Result as OraResult } from 'oracledb';
 import { IUserDAL } from '../interfaces/user.dal.interface';
 import { IUser, CreateUserDTO, UpdateUserDTO, UserFilter } from '../../modules/user/user.types';
-import { PaginatedResult } from '@prasad-rtns/shared';
+import { PaginatedResult } from '@rtns/core';
 import { parsePermissions } from '../common/rbms.mapper';
 
 /**
@@ -133,12 +133,12 @@ export class OracleUserDAL implements IUserDAL {
                          role_id, company_id, department_id, designation_id, user_category, status, is_email_verified,
                          failed_login_attempts, two_factor_enabled, created_by, created_at, updated_at)
       VALUES (:id, :username, :email, :password, :firstName, :lastName, :phone, :avatar,
-              :roleId, :companyId, :deptId, :desigId, :userCategory, 'active', 0, 0, 0, :createdBy, SYSDATE, SYSDATE)`,
+              :roleId, :companyId, :deptId, :desigId, :userCategory, 'active', :isEmailVerified, 0, :twoFactorEnabled, :createdBy, SYSDATE, SYSDATE)`,
       {
         id, username: data.username, email: data.email.toLowerCase(), password: data.password,
         firstName: data.firstName, lastName: data.lastName, phone: data.phone ?? null, avatar: data.avatar ?? null,
         roleId: data.roleId, companyId: data.companyId ?? null, deptId: data.departmentId, desigId: data.designationId,
-        userCategory: data.userCategory ?? 'internal', createdBy: data.createdBy ?? null,
+        userCategory: data.userCategory ?? 'internal', isEmailVerified: data.isEmailVerified ? 1 : 0, twoFactorEnabled: data.twoFactorEnabled ? 1 : 0, createdBy: data.createdBy ?? null,
       }
     );
     return (await this.findById(id))!;
@@ -150,14 +150,15 @@ export class OracleUserDAL implements IUserDAL {
     const fieldMap: Record<string, string> = {
       firstName: 'first_name', middleName: 'middle_name', lastName: 'last_name', phone: 'phone', avatar: 'avatar',
       roleId: 'role_id', companyId: 'company_id', departmentId: 'department_id', designationId: 'designation_id',
-      status: 'status', password: 'password', isEmailVerified: 'is_email_verified',
+      status: 'status', password: 'password', isEmailVerified: 'is_email_verified', twoFactorEnabled: 'two_factor_enabled',
       emailVerificationToken: 'email_verification_token', passwordResetToken: 'password_reset_token',
       passwordResetExpires: 'password_reset_expires', failedLoginAttempts: 'failed_login_attempts',
       lockUntil: 'lock_until', lastLoginAt: 'last_login_at', lastLoginIp: 'last_login_ip', updatedBy: 'updated_by',
     };
     for (const [key, col] of Object.entries(fieldMap)) {
       if (key in data && (data as Record<string, unknown>)[key] !== undefined) {
-        binds[key] = (data as Record<string, unknown>)[key];
+        const value = (data as Record<string, unknown>)[key];
+        binds[key] = key === 'isEmailVerified' || key === 'twoFactorEnabled' ? (value ? 1 : 0) : value;
         sets.push(`${col} = :${key}`);
       }
     }

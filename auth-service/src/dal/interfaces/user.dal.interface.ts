@@ -1,4 +1,4 @@
-import { IBaseDAL, PaginatedResult } from '@prasad-rtns/shared';
+import { IBaseDAL, PaginatedResult } from '@rtns/core';
 import { IUser, CreateUserDTO, UpdateUserDTO, UserFilter } from '../../modules/user/user.types';
 
 /**

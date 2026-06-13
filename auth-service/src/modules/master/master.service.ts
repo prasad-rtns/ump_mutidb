@@ -1,6 +1,6 @@
 import { DALFactory }           from '../../dal/dal.factory';
-import { CacheService }          from '@prasad-rtns/shared';
-import { DatabaseType }          from '@prasad-rtns/shared';
+import { CacheService }          from '@rtns/core';
+import { DatabaseType }          from '@rtns/core';
 import {
   CreateRoleDTO,
   UpdateRoleDTO,

@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { DepartmentService } from './department.service';
-import { DatabaseType } from '@prasad-rtns/shared';
+import { DatabaseType } from '@rtns/core';
 
 export class DepartmentController {
 

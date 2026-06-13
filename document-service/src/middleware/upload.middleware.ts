@@ -1,6 +1,6 @@
 import multer from 'multer';
 import { Request, Response, NextFunction } from 'express';
-import { ResponseUtil } from '@prasad-rtns/shared';
+import { ResponseUtil } from '@rtns/core';
 
 const ALLOWED_MIME_TYPES = (process.env.ALLOWED_MIME_TYPES || 
   'image/jpeg,image/png,image/gif,image/webp,application/pdf,text/plain'

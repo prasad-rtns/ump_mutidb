@@ -1,48 +1,44 @@
-# ─────────────────────────────────────────────────────────────
-# Build Stage
-# ─────────────────────────────────────────────────────────────
 FROM node:24-slim AS builder
 
 WORKDIR /app
 
-# Copy only this service manifests
-COPY package*.json ./
-
-# Install dependencies for isolated service builds.
+COPY sharedv1.0/package*.json ./sharedv1.0/
+WORKDIR /app/sharedv1.0
 RUN npm install
-
-# Copy full service source (including src/shared)
-COPY . .
-
-# Compile TypeScript
+COPY sharedv1.0 ./
 RUN npm run build
 
-# Trim builder dependencies down to production before handing off to runtime.
+WORKDIR /app
+COPY document-service/package*.json ./document-service/
+
+WORKDIR /app/document-service
+RUN npm install
+
+COPY document-service ./
+RUN npm run build
 RUN npm prune --omit=dev
+RUN rm -rf node_modules/@rtns/core \
+    && mkdir -p node_modules/@rtns/core \
+    && cp -R ../sharedv1.0/package*.json ../sharedv1.0/dist node_modules/@rtns/core/
 
-
-# ─────────────────────────────────────────────────────────────
-# Production Stage
-# ─────────────────────────────────────────────────────────────
 FROM node:24-slim AS production
 
 LABEL maintainer="UMP Platform"
 LABEL service="document-service"
 
-# Create non-root user (Debian syntax)
 RUN groupadd -g 1001 nodejs \
     && useradd -u 1001 -g nodejs -m -s /bin/bash nodejs
 
 WORKDIR /app
+ENV NODE_PATH=/app/node_modules
 
-# Copy only manifests
-COPY package*.json ./
+COPY document-service/package*.json ./
+COPY --from=builder /app/document-service/dist ./dist
+COPY --from=builder /app/document-service/node_modules ./node_modules
+COPY --from=builder /app/sharedv1.0/package*.json ./sharedv1.0/
+COPY --from=builder /app/sharedv1.0/dist ./sharedv1.0/dist
+COPY document-service/src ./src
 
-# Copy compiled output from builder
-COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/node_modules ./node_modules
-COPY src ./src
-# Create required runtime folders
 RUN mkdir -p logs uploads \
     && npm cache clean --force \
     && chown -R nodejs:nodejs /app

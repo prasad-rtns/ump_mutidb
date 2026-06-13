@@ -4,7 +4,7 @@ import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { users, roles, companies, departments, designations } from '../../schemas/pg.schema';
 import { IUserDAL } from '../interfaces/user.dal.interface';
 import { IUser, CreateUserDTO, UpdateUserDTO, UserFilter } from '../../modules/user/user.types';
-import { PaginatedResult } from '@prasad-rtns/shared';
+import { PaginatedResult } from '@rtns/core';
 import type { IRole } from '../../modules/master/master.types';
 import { parsePermissions } from '../common/rbms.mapper';
 
@@ -198,9 +198,9 @@ export class PgUserDAL implements IUserDAL {
         designationId: data.designationId,
         userCategory: data.userCategory ?? 'internal',
         status: 'active',
-        isEmailVerified: false,
+        isEmailVerified: data.isEmailVerified ?? false,
         failedLoginAttempts: 0,
-        twoFactorEnabled: false,
+        twoFactorEnabled: data.twoFactorEnabled ?? false,
         createdBy: data.createdBy ?? null,
         createdAt: now,
         updatedAt: now,
@@ -224,6 +224,7 @@ export class PgUserDAL implements IUserDAL {
     if (data.status !== undefined) updateData.status = data.status;
     if (data.password !== undefined) updateData.password = data.password;
     if (data.isEmailVerified !== undefined) updateData.isEmailVerified = data.isEmailVerified;
+    if (data.twoFactorEnabled !== undefined) updateData.twoFactorEnabled = data.twoFactorEnabled;
     if (data.emailVerificationToken !== undefined) updateData.emailVerificationToken = data.emailVerificationToken ?? null;
     if (data.passwordResetToken !== undefined) updateData.passwordResetToken = data.passwordResetToken ?? null;
     if (data.passwordResetExpires !== undefined) updateData.passwordResetExpires = data.passwordResetExpires ?? null;

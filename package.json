@@ -3,13 +3,14 @@
   "version": "1.0.0",
   "private": true,
   "workspaces": [
+    "sharedv1.0",
     "auth-service",
     "master-service",
     "document-service"
   ],
   "description": "User Management Platform — npm workspaces monorepo",
   "scripts": {
-    "build:shared": "npm run build --workspace=shared",
+    "build:shared": "npm run build --workspace=@rtns/core",
     "build:auth": "npm run build --workspace=auth-service",
     "build:master": "npm run build --workspace=master-service",
     "build:document": "npm run build --workspace=document-service",

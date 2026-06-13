@@ -1,5 +1,5 @@
 import { MasterDALFactory, MasterDALBundle } from '../../dal/dal.factory';
-import { CacheService, DatabaseType } from '@prasad-rtns/shared';
+import { CacheService, DatabaseType } from '@rtns/core';
 import type { CreateCountryDTO, UpdateCountryDTO, CreateStateDTO, CreateCityDTO, CreateCategoryDTO, UpdateCategoryDTO, CreateTagDTO, CreateDocumentTypeDTO, UpsertSettingDTO, CreateServiceTypeDTO, UpdateServiceTypeDTO } from './coredata.types';
 import logger from '../../database/logger';
 
@@ -121,17 +121,14 @@ export class CategoryService {
   private constructor(private readonly dal: MasterDALBundle) {}
   static async create(dbType: DatabaseType) { return new CategoryService(await getDal(dbType)); }
 
-  async listAll(search?: string) {
-    if (search) return this.dal.category.search(search);
-    const cached = await cache.get<unknown[]>('categories:all');
+  async listAll(search?: string, categoryType?: string) {
+    if (search) return this.dal.category.search(search, categoryType);
+    const cacheKey = `categories:all:${categoryType || 'any'}`;
+    const cached = await cache.get<unknown[]>(cacheKey);
     if (cached) return cached;
-    const data = await this.dal.category.findAll(true);
-    await cache.set('categories:all', data, 1800);
+    const data = await this.dal.category.findAll(true, categoryType);
+    await cache.set(cacheKey, data, 1800);
     return data;
-  }
-
-  async listByParent(parentId: string | null) {
-    return this.dal.category.findByParent(parentId);
   }
 
   async getById(id: string) {
@@ -145,6 +142,9 @@ export class CategoryService {
     if (existing) throw new Error(`Category code '${data.code}' already exists`);
     const result = await this.dal.category.create(data);
     await cache.del('categories:all');
+    await cache.del('categories:all:any');
+    await cache.del('categories:all:admin category');
+    await cache.del('categories:all:project category');
     return result;
   }
 
@@ -152,6 +152,9 @@ export class CategoryService {
     const result = await this.dal.category.update(id, data);
     if (!result) throw new Error('Category not found');
     await cache.del('categories:all');
+    await cache.del('categories:all:any');
+    await cache.del('categories:all:admin category');
+    await cache.del('categories:all:project category');
     return result;
   }
 
@@ -159,6 +162,9 @@ export class CategoryService {
     const ok = await this.dal.category.delete(id);
     if (!ok) throw new Error('Category not found');
     await cache.del('categories:all');
+    await cache.del('categories:all:any');
+    await cache.del('categories:all:admin category');
+    await cache.del('categories:all:project category');
     return { message: 'Category deactivated' };
   }
 }

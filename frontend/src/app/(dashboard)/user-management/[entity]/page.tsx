@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { useTranslation } from '@/i18n';
 import { translatedModuleName } from '@/lib/module-translations';
 import { useAuthMasterDepartments, useAuthMasterModules } from '@/hooks/use-auth-master-data';
+import type { IModuleMenu } from '@/types';
 
 interface Props { params: { entity: string } }
 
@@ -37,7 +38,11 @@ export default function UserManagementEntityPage({ params }: Props) {
   const { entity } = params;
   const { t } = useTranslation();
   const { data: departments } = useAuthMasterDepartments(entity === 'designations');
-  const { data: modules } = useAuthMasterModules(entity === 'modules');
+  const { data: activeModules = [] } = useAuthMasterModules(entity === 'modules');
+  const moduleOptions = (activeModules as IModuleMenu[]).map((module) => ({
+    value: module.id,
+    label: translatedModuleName(module, t),
+  }));
 
   const configs: Record<string, RbmsConfig> = {
     roles: {
@@ -145,12 +150,13 @@ export default function UserManagementEntityPage({ params }: Props) {
         { name: 'code', label: t('labels.code'), required: true },
         { name: 'route', label: t('labels.route'), required: true, placeholder: '/user-management/roles' },
         { name: 'icon', label: t('labels.icon') },
-        { name: 'parentId', label: t('labels.parentModule'), type: 'select', options: modules?.map((m) => ({ value: m.id, label: translatedModuleName(m, t) })) ?? [] },
+        { name: 'parentId', label: t('labels.parentModule'), type: 'select', options: moduleOptions },
         { name: 'moduleType', label: t('labels.moduleType'), type: 'select', required: true, options: [
           { value: 'admin', label: t('rbms.moduleTypes.admin') },
           { value: 'internal', label: t('rbms.moduleTypes.internal') },
           { value: 'external', label: t('rbms.moduleTypes.external') },
         ] },
+        { name: 'isActive', label: t('labels.status'), type: 'boolean' },
         { name: 'sortOrder', label: t('labels.sortOrder'), type: 'number' },
         { name: 'permissions', label: t('labels.permissions'), type: 'permissions', placeholder: 'modules:read\nmodules:create\nmodules:update\nmodules:delete' },
       ],

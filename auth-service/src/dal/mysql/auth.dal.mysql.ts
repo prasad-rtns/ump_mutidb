@@ -1,7 +1,7 @@
 import { and, asc, count, desc, eq, like, or, sql } from 'drizzle-orm';
 import type { MySql2Database } from 'drizzle-orm/mysql2';
 import { v4 as uuidv4 } from 'uuid';
-import { PaginatedResult } from '@prasad-rtns/shared';
+import { PaginatedResult } from '@rtns/core';
 import { users, roles, companies, departments, designations, sessions } from '../../schemas/mysql.schema';
 import { IUserDAL } from '../interfaces/user.dal.interface';
 import { ISessionDAL } from '../interfaces/session.dal.interface';
@@ -183,9 +183,9 @@ export class MysqlUserDAL implements IUserDAL {
       designationId: data.designationId,
       userCategory: data.userCategory ?? 'internal',
       status: 'active',
-      isEmailVerified: false,
+      isEmailVerified: data.isEmailVerified ?? false,
       failedLoginAttempts: 0,
-      twoFactorEnabled: false,
+      twoFactorEnabled: data.twoFactorEnabled ?? false,
       createdBy: data.createdBy ?? null,
       createdAt: timestamp,
       updatedAt: timestamp,
@@ -211,6 +211,7 @@ export class MysqlUserDAL implements IUserDAL {
     if (data.status !== undefined) updateData.status = data.status;
     if (data.password !== undefined) updateData.password = data.password;
     if (data.isEmailVerified !== undefined) updateData.isEmailVerified = data.isEmailVerified;
+    if (data.twoFactorEnabled !== undefined) updateData.twoFactorEnabled = data.twoFactorEnabled;
     if (data.emailVerificationToken !== undefined) updateData.emailVerificationToken = data.emailVerificationToken ?? null;
     if (data.passwordResetToken !== undefined) updateData.passwordResetToken = data.passwordResetToken ?? null;
     if (data.passwordResetExpires !== undefined) updateData.passwordResetExpires = data.passwordResetExpires ?? null;

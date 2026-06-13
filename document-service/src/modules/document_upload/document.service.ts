@@ -1,6 +1,6 @@
 import { DocumentDALFactory, DocumentDALBundle }          from '../../dal/dal.factory';
 import { getStorageProvider, StorageProviderType }         from '../../providers/storage.provider';
-import { CacheService }                                    from '@prasad-rtns/shared';
+import { CacheService }                                    from '@rtns/core';
 import { Document, CreateDocumentDTO, DocumentFilter, DocumentStatus, StorageProviderKey } from './document.types';
 import logger from '../../database/logger';
 

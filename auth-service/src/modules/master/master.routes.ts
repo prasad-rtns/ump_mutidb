@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { asyncHandler } from '@prasad-rtns/shared';
+import { asyncHandler } from '@rtns/core';
 import {
   RoleController,
   CompanyOrUtilityController,

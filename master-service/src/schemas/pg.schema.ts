@@ -45,7 +45,7 @@ export const categories = pgTable('categories', {
   id: uuid('id').primaryKey().defaultRandom(),
   name: varchar('name', { length: 200 }).notNull(),
   code: varchar('code', { length: 50 }).notNull().unique(),
-  parentId: uuid('parent_id'),
+  categoryType: varchar('category_type', { length: 50 }).default('admin category').notNull(),
   description: text('description'),
   icon: varchar('icon', { length: 100 }),
   sortOrder: integer('sort_order').default(0).notNull(),
@@ -55,7 +55,6 @@ export const categories = pgTable('categories', {
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 }, (t) => ({
   codeIdx: uniqueIndex('categories_code_idx').on(t.code),
-  parentIdx: index('categories_parent_idx').on(t.parentId),
 }));
 
 // ─── Tags ─────────────────────────────────────────────────────────────────────
@@ -137,10 +136,7 @@ export const citiesRelations = relations(cities, ({ one }) => ({
   state: one(states, { fields: [cities.stateId], references: [states.id] }),
 }));
 
-export const categoriesRelations = relations(categories, ({ one, many }) => ({
-  parent: one(categories, { fields: [categories.parentId], references: [categories.id] }),
-  children: many(categories),
-}));
+export const categoriesRelations = relations(categories, () => ({}));
 
 export const masterSchema = {
   countries, states, cities, categories, tags,

@@ -3,7 +3,7 @@ import { drizzle as mysqlDrizzle } from 'drizzle-orm/mysql2';
 import { Pool as PgPool } from 'pg';
 import mysql from 'mysql2/promise';
 import { MongoClient, Db } from 'mongodb';
-import { DatabaseType } from '@prasad-rtns/shared';
+import { DatabaseType } from '@rtns/core';
 import { masterSchema } from '../schemas/pg.schema';
 import { MongoCollections } from '../schemas/mongo.schema';
 import logger from './logger';

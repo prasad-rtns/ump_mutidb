@@ -235,10 +235,6 @@ export class MongoCategoryDAL implements ICategoryDAL {
       .toArray();
   }
 
-  async findByParent(parentId: string | null): Promise<Category[]> {
-    return this.col().find({ parentId }).toArray();
-  }
-
   async findById(id: string): Promise<Category | null> {
     return this.col().findOne({ id });
   }
@@ -260,7 +256,7 @@ export class MongoCategoryDAL implements ICategoryDAL {
         name: data.name,
         code: data.code,
 
-        parentId: nullableId(data.parentId),
+        categoryType: data.categoryType || 'admin category',
         description: data.description ?? null,
         icon: data.icon ?? null,
         metadata: data.metadata ?? null,
@@ -281,7 +277,7 @@ export class MongoCategoryDAL implements ICategoryDAL {
     const updateData: Partial<Category> = {
         ...(data.name !== undefined && { name: data.name }),
         ...(data.code !== undefined && { code: data.code }),
-        ...(data.parentId !== undefined && { parentId: nullableId(data.parentId) }),
+        ...(data.categoryType !== undefined && { categoryType: data.categoryType || 'admin category' }),
         ...(data.description !== undefined && { description: data.description ?? null }),
         ...(data.icon !== undefined && { icon: data.icon ?? null }),
         ...(data.metadata !== undefined && { metadata: data.metadata ?? null }),

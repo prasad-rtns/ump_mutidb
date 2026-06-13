@@ -19,8 +19,7 @@ function singularize(value: string) {
   return value;
 }
 
-function entityForSelectField(fieldName: string, currentEntity: string, schemas: Record<string, EntityMeta>) {
-  if (fieldName === 'parentId') return currentEntity;
+function entityForSelectField(fieldName: string, schemas: Record<string, EntityMeta>) {
   if (!fieldName.endsWith('Id')) return '';
 
   const base = fieldName.slice(0, -2).toLowerCase();
@@ -44,7 +43,7 @@ function useSelectOptions(entity: string, schema?: EntityMeta) {
     return Array.from(new Set(
       schema.fields
         .filter((field) => field.type === 'select' && !field.options?.length)
-        .map((field) => entityForSelectField(field.name, entity, schemas))
+        .map((field) => entityForSelectField(field.name, schemas))
         .filter(Boolean),
     ));
   }, [entity, schema, schemas]);
@@ -55,7 +54,8 @@ function useSelectOptions(entity: string, schema?: EntityMeta) {
       const entries = await Promise.all(selectSources.map(async (source) => {
         const sourceSchema = schemas[source];
         const endpoint = sourceSchema?.apiEndpoint ?? `/api/v1/master/${source}`;
-        const { data } = await masterApi.get(masterProxyPath(endpoint));
+        const suffix = source === 'categories' ? '?categoryType=admin%20category' : '';
+        const { data } = await masterApi.get(`${masterProxyPath(endpoint)}${suffix}`);
         const payload = data.data;
         const rows = Array.isArray(payload) ? payload : payload?.data ?? [];
         return [source, rows] as const;
@@ -72,14 +72,12 @@ function useSelectOptions(entity: string, schema?: EntityMeta) {
       .filter((field) => field.type === 'select')
       .map((field) => {
         if (field.options?.length) return [field.name, field.options];
-        const source = entityForSelectField(field.name, entity, schemas);
+        const source = entityForSelectField(field.name, schemas);
         const rows = rowsBySource[source] ?? [];
         const options = rows.map((row) => ({ value: String(row.id ?? row.key ?? ''), label: optionLabel(row) }));
-        return field.name === 'parentId'
-          ? [field.name, [{ value: '', label: t('common.noneRoot') }, ...options]]
-          : [field.name, options];
+        return [field.name, options];
       }));
-  }, [entity, query.data, schema, schemas, t]);
+  }, [entity, query.data, schema, schemas]);
 }
 
 export default function MasterEntityPage({ params }: Props) {

@@ -4,7 +4,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { documents } from '../../schemas/mysql.schema';
 import { IDocumentDAL } from '../interfaces/document.dal.interface';
 import { CreateDocumentDTO, Document, DocumentFilter, UpdateDocumentStatusDTO } from '../../modules/document_upload/document.types';
-import { PaginatedResult } from '@prasad-rtns/shared';
+import { PaginatedResult } from '@rtns/core';
 
 type MysqlDB = MySql2Database<any>;
 

@@ -278,22 +278,14 @@ export class MysqlCategoryDAL implements ICategoryDAL {
 
   constructor(private db: MySql2Database<any>) {}
 
-  async findAll(activeOnly = true): Promise<Category[]> {
+  async findAll(activeOnly = true, categoryType?: string): Promise<Category[]> {
     return this.db
       .select()
       .from(categories)
-      .where(activeOnly ? eq(categories.isActive, true) : undefined);
-  }
-
-  async findByParent(parentId: string | null): Promise<Category[]> {
-    return this.db
-      .select()
-      .from(categories)
-      .where(
-      parentId === null
-        ? isNull(categories.parentId)
-        : eq(categories.parentId, parentId)
-    );
+      .where(and(
+        activeOnly ? eq(categories.isActive, true) : undefined,
+        categoryType ? eq(categories.categoryType, categoryType) : undefined,
+      ));
   }
 
   async findById(id: string): Promise<Category | null> {
@@ -316,11 +308,14 @@ export class MysqlCategoryDAL implements ICategoryDAL {
     return r[0] ?? null;
   }
 
-  async search(query: string): Promise<Category[]> {
+  async search(query: string, categoryType?: string): Promise<Category[]> {
     return this.db
       .select()
       .from(categories)
-      .where(like(categories.name, `%${query}%`));
+      .where(and(
+        like(categories.name, `%${query}%`),
+        categoryType ? eq(categories.categoryType, categoryType) : undefined,
+      ));
   }
 
   async create(data: CreateCategoryDTO): Promise<Category> {
@@ -329,7 +324,7 @@ export class MysqlCategoryDAL implements ICategoryDAL {
       id: randomUUID(),
       name: data.name,
       code: data.code,
-      parentId: nullableId(data.parentId),
+      categoryType: data.categoryType || 'admin category',
       description: data.description ?? null,
       icon: data.icon ?? null,
       metadata: data.metadata ?? null,
@@ -348,7 +343,7 @@ export class MysqlCategoryDAL implements ICategoryDAL {
     const updateData = {
       ...(data.name !== undefined && { name: data.name }),
       ...(data.code !== undefined && { code: data.code }),
-      ...(data.parentId !== undefined && { parentId: nullableId(data.parentId) }),
+      ...(data.categoryType !== undefined && { categoryType: data.categoryType || 'admin category' }),
       ...(data.description !== undefined && { description: data.description ?? null }),
       ...(data.icon !== undefined && { icon: data.icon ?? null }),
       ...(data.metadata !== undefined && { metadata: data.metadata ?? null }),

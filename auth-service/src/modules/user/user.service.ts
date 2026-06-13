@@ -1,7 +1,7 @@
 import bcrypt from 'bcryptjs';
 import { DALFactory, DALBundle }   from '../../dal/dal.factory';
-import { CacheService }             from '@prasad-rtns/shared';
-import { DatabaseType }             from '@prasad-rtns/shared';
+import { CacheService }             from '@rtns/core';
+import { DatabaseType }             from '@rtns/core';
 import { UserFilter, UpdateUserDTO, IUser } from '../../modules/user/user.types';
 import { ChangePasswordInput, RegisterInput } from '../../modules/auth/auth.types';
 import logger                       from '../../database/logger';

@@ -8,6 +8,7 @@ export interface IUser {
   username: string;
   email: string;
   firstName: string;
+  middleName?: string | null;
   lastName: string;
   phone?: string | null;
   avatar?: string | null;
@@ -18,6 +19,13 @@ export interface IUser {
   userCategory: UserCategory;
   status: UserStatus;
   isEmailVerified: boolean;
+  failedLoginAttempts?: number;
+  lockUntil?: string | null;
+  twoFactorEnabled?: boolean;
+  lastLoginAt?: string | null;
+  lastLoginIp?: string | null;
+  createdBy?: string | null;
+  updatedBy?: string | null;
   createdAt: string;
   updatedAt: string;
   role?: IRole;
@@ -72,7 +80,7 @@ export interface LoginResult {
 export interface ICountry    { id: string; name: string; code: string; dialCode?: string | null; flag?: string | null; currency?: string | null; currencySymbol?: string | null; isActive: boolean; }
 export interface IState      { id: string; name: string; code: string; countryId: string; isActive: boolean; }
 export interface ICity       { id: string; name: string; stateId: string; latitude?: string | null; longitude?: string | null; isActive: boolean; }
-export interface ICategory   { id: string; name: string; code: string; parentId?: string | null; description?: string | null; icon?: string | null; sortOrder: number; isActive: boolean; }
+export interface ICategory   { id: string; name: string; code: string; categoryType?: string; description?: string | null; icon?: string | null; sortOrder: number; isActive: boolean; }
 export interface ITag        { id: string; name: string; slug: string; color?: string | null; isActive: boolean; }
 export interface IDocumentType { id: string; name: string; code: string; description?: string | null; maxSizeMb: number; isRequired: boolean; isActive: boolean; }
 export interface IServiceType  { id: string; name: string; code: string; description?: string | null; routeLink?: string | null; icon?: string | null; isActive: boolean; }

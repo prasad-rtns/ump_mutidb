@@ -1,5 +1,5 @@
 import { Document, CreateDocumentDTO, DocumentFilter, UpdateDocumentStatusDTO } from '../../modules/document_upload/document.types';
-import { PaginatedResult } from '@prasad-rtns/shared';
+import { PaginatedResult } from '@rtns/core';
 
 export interface IDocumentDAL {
   create(data: CreateDocumentDTO): Promise<Document>;

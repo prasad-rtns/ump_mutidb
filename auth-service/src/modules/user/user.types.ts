@@ -60,6 +60,8 @@ export interface CreateUserDTO {
   departmentId: string;
   designationId: string;
   userCategory?: UserCategory;
+  isEmailVerified?: boolean;
+  twoFactorEnabled?: boolean;
   createdBy?: string;
 }
 
@@ -76,6 +78,7 @@ export interface UpdateUserDTO {
   status?: UserStatus;
   password?: string;
   isEmailVerified?: boolean;
+  twoFactorEnabled?: boolean;
   emailVerificationToken?: string | null;
   passwordResetToken?: string | null;
   passwordResetExpires?: Date | null;

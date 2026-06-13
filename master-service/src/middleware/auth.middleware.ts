@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import axios, { AxiosError } from 'axios';
-import { JwtPayload, ResponseUtil } from '@prasad-rtns/shared';
+import { JwtPayload, ResponseUtil } from '@rtns/core';
 import logger from '../database/logger';
 import dotenv from 'dotenv';
 

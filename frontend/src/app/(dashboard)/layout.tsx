@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { Menu, X } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth.store';
 import { Sidebar } from '@/components/layout/sidebar';
+import { AppFooter } from '@/components/layout/app-footer';
 import { Button } from '@/components/ui/button';
 import { LanguageSwitcher } from '@/components/language/language-switcher';
 import { authApi } from '@/lib/api';
@@ -89,8 +90,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       )}
 
-      <main className="min-w-0 flex-1 overflow-y-auto">
-        <div className="p-4 pt-20 sm:p-6 md:pt-6">{children}</div>
+      <main className="flex min-w-0 flex-1 flex-col overflow-y-auto">
+        <div className="flex-1 p-4 pt-20 sm:p-6 md:pt-6">{children}</div>
+        <AppFooter />
       </main>
     </div>
   );

@@ -1,4 +1,4 @@
-import { DatabaseType } from '@prasad-rtns/shared';
+import { DatabaseType } from '@rtns/core';
 import { drizzle as pgDrizzle } from 'drizzle-orm/node-postgres';
 import { getPgPool, getMssqlPool, getOraclePool, getMongoClient, getMysqlDB } from '../database/adapters/db.connection';
 import { PgUserDAL } from './pg/user.dal.pg';

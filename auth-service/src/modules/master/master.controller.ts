@@ -1,8 +1,8 @@
 import { Request, Response } from 'express';
 import { validationResult } from 'express-validator';
 import { RoleService, CompanyOrUtilityService, DepartmentService, DesignationService, ModuleMenuService } from './master.service';
-import { ResponseUtil } from '@prasad-rtns/shared';
-import { DatabaseType } from '@prasad-rtns/shared';
+import { ResponseUtil } from '@rtns/core';
+import { DatabaseType } from '@rtns/core';
 
 const dbType = (req: Request): DatabaseType =>
   (req.dbType as DatabaseType) || (process.env.DEFAULT_DB_TYPE as DatabaseType) || 'postgres';

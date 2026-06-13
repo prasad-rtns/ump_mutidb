@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { ResponseUtil } from '@prasad-rtns/shared';
+import { ResponseUtil } from '@rtns/core';
 import { MASTER_SCHEMA } from './meta.config';
 
 const router = Router();

@@ -9,6 +9,7 @@ import { clearPublicSettingsCache } from '@/hooks/use-public-settings';
 import { DataTable } from '@/components/data-table/data-table';
 import { toast } from '@/hooks/use-toast';
 import { useTranslation } from '@/i18n';
+import type { ICategory } from '@/types';
 
 interface Props {
   entity: string;
@@ -17,6 +18,56 @@ interface Props {
 
 function masterProxyPath(apiEndpoint: string) {
   return apiEndpoint.replace('/api/v1', '');
+}
+
+function endpointForList(entity: string, apiEndpoint: string) {
+  return entity === 'settings' ? '/api/v1/master/settings/all' : apiEndpoint;
+}
+
+function normalizeSettingPayload(values: Record<string, unknown>) {
+  const payload = { ...values };
+  const type = String(payload.type ?? 'text').trim().toLowerCase();
+  const rawValue = payload.value;
+  const value = rawValue == null ? '' : String(rawValue).trim();
+
+  payload.key = String(payload.key ?? '').trim();
+  payload.type = type;
+  payload.category = String(payload.category ?? 'general').trim() || 'general';
+  payload.isPublic = payload.isPublic === true || payload.isPublic === 'true' || payload.isPublic === 'on';
+
+  if (!payload.key) throw new Error('Setting key is required');
+
+  if (type === 'integer' && value && !/^-?\d+$/.test(value)) {
+    throw new Error('Value must be an integer');
+  }
+  if (type === 'number' && value && !Number.isFinite(Number(value))) {
+    throw new Error('Value must be a number');
+  }
+  if (type === 'boolean') {
+    payload.value = rawValue === true || value.toLowerCase() === 'true' ? 'true' : 'false';
+    return payload;
+  }
+  if (type === 'url' && value) {
+    try {
+      new URL(value);
+    } catch {
+      throw new Error('Value must be a valid absolute URL');
+    }
+  }
+  if (type === 'color' && value && !/^#?([a-f\d]{3}|[a-f\d]{6})$/i.test(value)) {
+    throw new Error('Value must be a valid hex color, for example #0F7E6D');
+  }
+  if (type === 'json' && value) {
+    try {
+      payload.value = JSON.stringify(JSON.parse(value));
+      return payload;
+    } catch {
+      throw new Error('Value must be valid JSON');
+    }
+  }
+
+  payload.value = value;
+  return payload;
 }
 
 export function EntityPage({ entity, selectOptions = {} }: Props) {
@@ -39,7 +90,8 @@ export function EntityPage({ entity, selectOptions = {} }: Props) {
     queryFn: async () => {
       const params = new URLSearchParams({ page: String(page), limit: String(rowsPerPage) });
       if (search) params.set('search', search);
-      const endpoint = schema?.apiEndpoint || `/api/v1/master/${entity}`;
+      if (entity === 'categories') params.set('categoryType', 'admin category');
+      const endpoint = endpointForList(entity, schema?.apiEndpoint || `/api/v1/master/${entity}`);
       const { data } = await masterApi.get(`${masterProxyPath(endpoint)}?${params}`);
       const payload = data.data;
       if (Array.isArray(payload)) {
@@ -54,8 +106,31 @@ export function EntityPage({ entity, selectOptions = {} }: Props) {
   });
 
   const createMut = useMutation({ mutationFn: (body: Record<string, unknown>) => masterApi.post(masterProxyPath(schema!.apiEndpoint), body) });
-  const updateMut = useMutation({ mutationFn: ({ id, body }: { id: string; body: Record<string, unknown> }) => masterApi.put(`${masterProxyPath(schema!.apiEndpoint)}/${id}`, body) });
-  const deleteMut = useMutation({ mutationFn: (id: string) => masterApi.delete(`${masterProxyPath(schema!.apiEndpoint)}/${id}`) });
+  const updateMut = useMutation({
+    mutationFn: ({ id, body }: { id: string; body: Record<string, unknown> }) => {
+      if (entity === 'settings') {
+        return masterApi.post(masterProxyPath(schema!.apiEndpoint), { ...body, key: body.key ?? id });
+      }
+      return masterApi.put(`${masterProxyPath(schema!.apiEndpoint)}/${encodeURIComponent(id)}`, body);
+    },
+  });
+  const deleteMut = useMutation({ mutationFn: (id: string) => masterApi.delete(`${masterProxyPath(schema!.apiEndpoint)}/${encodeURIComponent(id)}`) });
+  const { data: adminCategories = [] } = useQuery<ICategory[]>({
+    queryKey: ['master', 'categories', 'admin category', 'select-options'],
+    queryFn: async () => {
+      const { data } = await masterApi.get('/master/categories?categoryType=admin%20category');
+      const payload = data.data;
+      return Array.isArray(payload) ? payload : payload?.data ?? [];
+    },
+    enabled: entity === 'settings',
+  });
+
+  const effectiveSelectOptions = entity === 'settings'
+    ? {
+        ...selectOptions,
+        category: adminCategories.map((category) => ({ value: category.code, label: category.name })),
+      }
+    : selectOptions;
 
   function invalidate() {
     qc.invalidateQueries({ queryKey: ['master', entity] });
@@ -67,7 +142,7 @@ export function EntityPage({ entity, selectOptions = {} }: Props) {
 
   async function onCreate(values: Record<string, unknown>) {
     try {
-      await createMut.mutateAsync(values);
+      await createMut.mutateAsync(entity === 'settings' ? normalizeSettingPayload(values) : values);
       invalidate();
       toast({ title: t('common.created', { name: schema?.label ?? '' }) });
     } catch (e) {
@@ -78,7 +153,7 @@ export function EntityPage({ entity, selectOptions = {} }: Props) {
 
   async function onUpdate(id: string, values: Record<string, unknown>) {
     try {
-      await updateMut.mutateAsync({ id, body: values });
+      await updateMut.mutateAsync({ id, body: entity === 'settings' ? normalizeSettingPayload(values) : values });
       invalidate();
       toast({ title: t('common.updated', { name: schema?.label ?? '' }) });
     } catch (e) {
@@ -136,7 +211,7 @@ export function EntityPage({ entity, selectOptions = {} }: Props) {
         onCreate={onCreate}
         onUpdate={onUpdate}
         onDelete={onDelete}
-        selectOptions={selectOptions}
+        selectOptions={effectiveSelectOptions}
       />
     </div>
   );

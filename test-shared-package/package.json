@@ -11,7 +11,7 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
-    "@prasad-rtns/shared": "^1.0.0",
+    "@rtns/core": "file:../sharedv1.0",
     "express": "^5.2.1",
     "jsonwebtoken": "^9.0.3",
     "redis": "^5.11.0",

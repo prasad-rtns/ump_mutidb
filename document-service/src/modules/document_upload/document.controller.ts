@@ -1,6 +1,6 @@
 import { Request, Response }   from 'express';
 import { DocumentService, UploadInput } from './document.service';
-import { ResponseUtil }         from '@prasad-rtns/shared';
+import { ResponseUtil }         from '@rtns/core';
 import { DocumentFilter, DocumentStatus } from './document.types';
 import { StorageProviderType }  from '../../providers/storage.provider';
 

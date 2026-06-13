@@ -282,15 +282,14 @@ CREATE TABLE IF NOT EXISTS categories (
     id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
     name VARCHAR(200) NOT NULL,
     code VARCHAR(50) NOT NULL UNIQUE,
-    parent_id CHAR(36),
+    category_type VARCHAR(50) DEFAULT 'admin category' NOT NULL,
     description TEXT,
     icon VARCHAR(100),
     sort_order INT DEFAULT 0 NOT NULL,
     is_active TINYINT(1) DEFAULT 1 NOT NULL,
     metadata JSON,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP NOT NULL,
-    INDEX idx_categories_parent_id (parent_id)
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS tags (
@@ -380,6 +379,18 @@ INSERT IGNORE INTO service_types (name, code, description, route_link, icon) VAL
     ('Document Services', 'DOCUMENT_SERVICES', 'Document upload, review, and approval services', '/services/documents', 'file-text'),
     ('Master Data Services', 'MASTER_DATA_SERVICES', 'Reference data and platform configuration services', '/services/master-data', 'layers');
 
+-- Seed admin categories used by configurable settings
+INSERT IGNORE INTO categories (name, code, category_type, description, icon, sort_order, is_active) VALUES
+    ('General', 'general', 'admin category', 'General application settings', 'settings', 10, 1),
+    ('External URL', 'external-url', 'admin category', 'External integration URL settings', 'globe', 20, 1),
+    ('Stub URL', 'stub-url', 'admin category', 'Stub integration URL settings', 'globe', 30, 1),
+    ('UI', 'ui', 'admin category', 'User interface settings', 'settings', 40, 1),
+    ('UI Theme', 'ui-theme', 'admin category', 'Theme and color settings', 'palette', 50, 1),
+    ('Security', 'security', 'admin category', 'Security settings', 'shield', 60, 1),
+    ('Email', 'email', 'admin category', 'Email settings', 'mail', 70, 1),
+    ('Storage', 'storage', 'admin category', 'Storage settings', 'database', 80, 1),
+    ('Integration', 'integration', 'admin category', 'Integration settings', 'layers', 90, 1);
+
 -- Seed system settings
 INSERT IGNORE INTO system_settings (`key`, value, type, description, is_public, category) VALUES
     ('app.name', 'User Management Platform', 'string', 'Application name', 1, 'general'),
@@ -388,7 +399,24 @@ INSERT IGNORE INTO system_settings (`key`, value, type, description, is_public, 
     ('auth.lock_duration_minutes', '30', 'number', 'Account lock duration in minutes', 0, 'security'),
     ('email.from', 'noreply@ump-platform.com', 'string', 'Default sender email', 0, 'email'),
     ('storage.provider', 'local', 'string', 'Default storage provider', 0, 'storage'),
-    ('ui.grid.rowsPerPage', '20', 'number', 'Rows shown per page in all frontend grids and tables', 1, 'ui');
+    ('ui.grid.rowsPerPage', '20', 'integer', 'Rows shown per page in all frontend grids and tables', 1, 'ui'),
+    ('ui.theme.background', '#F2F5F4', 'color', 'Application page background color', 1, 'ui-theme'),
+    ('ui.theme.foreground', '#173531', 'color', 'Application primary text color', 1, 'ui-theme'),
+    ('ui.theme.card', '#FFFFFF', 'color', 'Card and popover background color', 1, 'ui-theme'),
+    ('ui.theme.cardForeground', '#173531', 'color', 'Card and popover text color', 1, 'ui-theme'),
+    ('ui.theme.primary', '#0F7E6D', 'color', 'Primary action color', 1, 'ui-theme'),
+    ('ui.theme.primaryForeground', '#FFFFFF', 'color', 'Primary action text color', 1, 'ui-theme'),
+    ('ui.theme.border', '#C2D5D2', 'color', 'Border and input color', 1, 'ui-theme'),
+    ('ui.theme.sidebar.background', '#1A2322', 'color', 'Left menu background color', 1, 'ui-theme'),
+    ('ui.theme.sidebar.foreground', '#E3E8E8', 'color', 'Left menu text color', 1, 'ui-theme'),
+    ('ui.theme.sidebar.active', '#0E7968', 'color', 'Left menu active item color', 1, 'ui-theme'),
+    ('ui.theme.sidebar.activeForeground', '#FFFFFF', 'color', 'Left menu active item text color', 1, 'ui-theme'),
+    ('ui.theme.sidebar.accent', '#263332', 'color', 'Left menu hover color', 1, 'ui-theme'),
+    ('ui.theme.sidebar.accentForeground', '#E3E8E8', 'color', 'Left menu hover text color', 1, 'ui-theme'),
+    ('ui.theme.footer.background', '#FFFFFF', 'color', 'Footer background color', 1, 'ui-theme'),
+    ('ui.theme.footer.foreground', '#497970', 'color', 'Footer text color', 1, 'ui-theme'),
+    ('external.apim.devportalUrl', 'https://localhost:9443/devportal', 'url', 'External API manager developer portal URL', 1, 'external-url'),
+    ('stub.userProfileUrl', 'http://localhost:8083', 'url', 'Stub endpoint for user profile integration', 0, 'stub-url');
 
 USE ump_documents;
 

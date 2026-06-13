@@ -48,17 +48,27 @@ export class PgCityDAL implements ICityDAL {
 // ─── Category DAL ─────────────────────────────────────────────────────────────
 export class PgCategoryDAL implements ICategoryDAL {
   constructor(private db: PgDB) {}
-  async findAll(activeOnly = true)            { return this.db.select().from(categories).where(activeOnly ? eq(categories.isActive, true) : undefined) as Promise<Category[]>; }
-  async findByParent(parentId: string | null) { const where = parentId === null ? eq(categories.isActive, true) : eq(categories.parentId, parentId); return this.db.select().from(categories).where(where) as Promise<Category[]>; }
+  async findAll(activeOnly = true, categoryType?: string) {
+    const where = and(
+      activeOnly ? eq(categories.isActive, true) : undefined,
+      categoryType ? eq(categories.categoryType, categoryType) : undefined,
+    );
+    return this.db.select().from(categories).where(where) as Promise<Category[]>;
+  }
   async findById(id: string)                  { const r = await this.db.select().from(categories).where(eq(categories.id, id)).limit(1); return (r[0] as Category) ?? null; }
   async findByCode(code: string)              { const r = await this.db.select().from(categories).where(eq(categories.code, code)).limit(1); return (r[0] as Category) ?? null; }
-  async search(query: string)                 { return this.db.select().from(categories).where(ilike(categories.name, `%${query}%`)) as Promise<Category[]>; }
+  async search(query: string, categoryType?: string) {
+    return this.db.select().from(categories).where(and(
+      ilike(categories.name, `%${query}%`),
+      categoryType ? eq(categories.categoryType, categoryType) : undefined,
+    )) as Promise<Category[]>;
+  }
   async create(data: CreateCategoryDTO) {
     const r = await this.db.insert(categories).values({
       id: uuidv4(),
       name: data.name,
       code: data.code,
-      parentId: nullableId(data.parentId),
+      categoryType: data.categoryType || 'admin category',
       description: data.description || null,
       icon: data.icon || null,
       metadata: data.metadata ?? null,
@@ -73,7 +83,7 @@ export class PgCategoryDAL implements ICategoryDAL {
     const updateData = {
       ...(data.name !== undefined && { name: data.name }),
       ...(data.code !== undefined && { code: data.code }),
-      ...(data.parentId !== undefined && { parentId: nullableId(data.parentId) }),
+      ...(data.categoryType !== undefined && { categoryType: data.categoryType || 'admin category' }),
       ...(data.description !== undefined && { description: data.description || null }),
       ...(data.icon !== undefined && { icon: data.icon || null }),
       ...(data.metadata !== undefined && { metadata: data.metadata ?? null }),

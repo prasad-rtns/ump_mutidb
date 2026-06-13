@@ -296,15 +296,6 @@ export class OracleCategoryDAL implements ICategoryDAL {
     return execute<Category>(this.pool, sql);
   }
 
-  async findByParent(parentId: string | null): Promise<Category[]> {
-
-    const sql = parentId === null
-      ? `SELECT * FROM categories WHERE parent_id IS NULL`
-      : `SELECT * FROM categories WHERE parent_id = :parentId`;
-
-    return execute<Category>(this.pool, sql, { parentId });
-  }
-
   async findById(id: string): Promise<Category | null> {
     const rows = await execute<Category>(
       this.pool,
@@ -337,7 +328,7 @@ export class OracleCategoryDAL implements ICategoryDAL {
       id: randomUUID(),
       name: data.name,
       code: data.code,
-      parentId: nullableId(data.parentId),
+      categoryType: data.categoryType || 'admin category',
       description: data.description ?? null,
       icon: data.icon ?? null,
       metadata: data.metadata ?? null,
@@ -350,8 +341,8 @@ export class OracleCategoryDAL implements ICategoryDAL {
     await execute(
       this.pool,
       `INSERT INTO categories
-       (id, name, code, parent_id, description, icon, metadata, sort_order, is_active, created_at, updated_at)
-       VALUES (:id, :name, :code, :parentId, :description, :icon, :metadata, :sortOrder, 1, :createdAt, :updatedAt)`,
+       (id, name, code, category_type, description, icon, metadata, sort_order, is_active, created_at, updated_at)
+       VALUES (:id, :name, :code, :categoryType, :description, :icon, :metadata, :sortOrder, 1, :createdAt, :updatedAt)`,
       doc
     );
 
@@ -365,7 +356,7 @@ export class OracleCategoryDAL implements ICategoryDAL {
       `UPDATE categories SET
         name = NVL(:name, name),
         code = NVL(:code, code),
-        parent_id = :parentId,
+        category_type = NVL(:categoryType, category_type),
         description = :description,
         icon = :icon,
         metadata = :metadata,
@@ -375,7 +366,7 @@ export class OracleCategoryDAL implements ICategoryDAL {
       {
         id,
         ...data,
-        parentId: data.parentId !== undefined ? nullableId(data.parentId) : null,
+        categoryType: data.categoryType || null,
         sortOrder: data.sortOrder !== undefined ? numericValue(data.sortOrder) : undefined,
         updatedAt: now(),
       }

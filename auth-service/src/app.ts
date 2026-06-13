@@ -16,9 +16,9 @@ import {
   globalErrorHandler,
   notFoundHandler,
   DatabaseType
-} from '@prasad-rtns/shared';
+} from '@rtns/core';
 import { checkDbHealth } from './database/adapters/db.connection';
-import { ResponseUtil } from '@prasad-rtns/shared';
+import { ResponseUtil } from '@rtns/core';
 import logger from './database/logger';
 import { register, collectDefaultMetrics } from 'prom-client';
 import {metricsMiddleware} from './middleware/metrics.middleware';

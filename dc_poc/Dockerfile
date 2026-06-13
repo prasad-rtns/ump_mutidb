@@ -8,7 +8,7 @@ RUN npm ci
 COPY . .
 RUN npx expo export --platform web
 
-FROM nginx:1.27-alpine
+FROM nginx:alpine
 
 COPY --from=builder /app/dist /usr/share/nginx/html
 

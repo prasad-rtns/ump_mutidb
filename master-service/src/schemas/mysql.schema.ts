@@ -55,7 +55,7 @@ export const categories = mysqlTable('categories', {
   id: varchar('id', { length: 36 }).primaryKey(),
   name: varchar('name', { length: 200 }).notNull(),
   code: varchar('code', { length: 50 }).notNull(),
-  parentId: varchar('parent_id', { length: 36 }),
+  categoryType: varchar('category_type', { length: 50 }).default('admin category').notNull(),
   description: text('description'),
   icon: varchar('icon', { length: 100 }),
   sortOrder: int('sort_order').default(0).notNull(),
@@ -65,7 +65,6 @@ export const categories = mysqlTable('categories', {
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 }, (table) => ({
   codeIdx: uniqueIndex('categories_code_idx').on(table.code),
-  parentIdx: index('categories_parent_idx').on(table.parentId),
 }));
 
 export const tags = mysqlTable('tags', {

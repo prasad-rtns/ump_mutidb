@@ -1,4 +1,4 @@
-import { DatabaseType } from '@prasad-rtns/shared';
+import { DatabaseType } from '@rtns/core';
 import { IDepartmentRepository } from './department.interface';
 
 import { PgDepartmentRepository } from './department.pg';

@@ -26,11 +26,10 @@ export interface ICityDAL {
 }
 
 export interface ICategoryDAL {
-  findAll(activeOnly?: boolean): Promise<Category[]>;
-  findByParent(parentId: string | null): Promise<Category[]>;
+  findAll(activeOnly?: boolean, categoryType?: string): Promise<Category[]>;
   findById(id: string): Promise<Category | null>;
   findByCode(code: string): Promise<Category | null>;
-  search(query: string): Promise<Category[]>;
+  search(query: string, categoryType?: string): Promise<Category[]>;
   create(data: CreateCategoryDTO): Promise<Category>;
   update(id: string, data: UpdateCategoryDTO): Promise<Category | null>;
   delete(id: string): Promise<boolean>;

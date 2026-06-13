@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { asyncHandler } from '@prasad-rtns/shared';
+import { asyncHandler } from '@rtns/core';
 import {
   CountryController, StateController, CityController,
   CategoryController, TagController, DocumentTypeController, SettingsController,
@@ -46,6 +46,7 @@ router.post  ('/document-types',  authenticate, requireAnyPermission('master:*',
 router.get   ('/settings',        authenticate, requireAnyPermission('master:*', 'settings:*', 'settings:read'), asyncHandler(SettingsController.listPublic));
 router.get   ('/settings/all',    authenticate, requireAnyPermission('master:*', 'settings:*', 'settings:read'), asyncHandler(SettingsController.listAll));
 router.post  ('/settings',        authenticate, requireAnyPermission('master:*', 'settings:*', 'settings:create', 'settings:update'), asyncHandler(SettingsController.upsert));
+router.put   ('/settings/:key',   authenticate, requireAnyPermission('master:*', 'settings:*', 'settings:update'), asyncHandler(SettingsController.update));
 router.delete('/settings/:key',   authenticate, requireAnyPermission('master:*', 'settings:*', 'settings:delete'), asyncHandler(SettingsController.remove));
 
 // Service Types

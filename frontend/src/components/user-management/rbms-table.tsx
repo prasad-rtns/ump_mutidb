@@ -1,12 +1,12 @@
 'use client';
 import type React from 'react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Check, ChevronDown, ChevronRight, Loader2, LockKeyhole, Pencil, Plus, Search, ShieldCheck, Trash2, X } from 'lucide-react';
+import { Check, ChevronDown, ChevronRight, Loader2, LockKeyhole, Pencil, Plus, Search, ShieldCheck, SlidersHorizontal, Trash2, X } from 'lucide-react';
 import { authApi, apiErrorMessage } from '@/lib/api';
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
-import { queryFnForAuthMasterEndpoint, queryKeyForAuthMasterEndpoint, useAuthMasterModules } from '@/hooks/use-auth-master-data';
+import { authMasterKeys, queryFnForAuthMasterEndpoint, queryKeyForAuthMasterEndpoint, useAuthMasterModules } from '@/hooks/use-auth-master-data';
 import { usePaginationSettings } from '@/hooks/use-pagination-settings';
 import { useSchemaCatalogue } from '@/hooks/use-schema';
 import { mergeModulesWithMasterSchema, permissionListForModules } from '@/lib/dynamic-modules';
@@ -15,10 +15,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { PaginationControls } from '@/components/pagination/pagination-controls';
+import { ColumnHeader, activeFilterCount, applyColumnFilters, applyColumnSort, nextSort, type ColumnFilters, type ColumnSort } from '@/components/data-grid/column-tools';
 import type { IModuleMenu } from '@/types';
 import { useTranslation } from '@/i18n';
 
-type FieldType = 'text' | 'textarea' | 'number' | 'select' | 'permissions';
+type FieldType = 'text' | 'textarea' | 'number' | 'select' | 'permissions' | 'boolean';
 
 export interface RbmsField {
   name: string;
@@ -60,6 +61,10 @@ function normalizeForm(values: Record<string, unknown>, fields: RbmsField[]) {
           .split(/[\n,]+/)
           .map((item) => item.trim())
           .filter(Boolean);
+      return;
+    }
+    if (field.type === 'boolean') {
+      payload[field.name] = raw === true || raw === 'true';
       return;
     }
     payload[field.name] = raw === '' ? null : raw;
@@ -108,6 +113,10 @@ function moduleTypeLabel(type: string, t: ReturnType<typeof useTranslation>['t']
   if (type === 'internal') return t('rbms.moduleTypes.internal');
   if (type === 'external') return t('rbms.moduleTypes.external');
   return t('rbms.moduleTypes.all');
+}
+
+function responseData(response: unknown) {
+  return (response as { data?: { data?: unknown } })?.data?.data;
 }
 
 function PermissionSelector({
@@ -535,6 +544,16 @@ function EntityForm({
                     <option key={option.value} value={option.value}>{option.label}</option>
                   ))}
                 </select>
+              ) : field.type === 'boolean' ? (
+                <select
+                  className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  value={String(fieldValue === '' || fieldValue === undefined ? true : fieldValue)}
+                  onChange={(event) => setField(field.name, event.target.value)}
+                  required={field.required}
+                >
+                  <option value="true">{t('users.active')}</option>
+                  <option value="false">{t('users.inactive')}</option>
+                </select>
               ) : (
                 <Input
                   type={field.type === 'number' ? 'number' : 'text'}
@@ -568,15 +587,19 @@ export function RbmsTable({ config }: { config: RbmsConfig }) {
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<Record<string, unknown> | null>(null);
   const [saving, setSaving] = useState(false);
+  const [columnFilters, setColumnFilters] = useState<ColumnFilters>({});
+  const [columnSort, setColumnSort] = useState<ColumnSort>(null);
+  const formRef = useRef<HTMLDivElement | null>(null);
   const { rowsPerPage } = usePaginationSettings();
 
   const canRead = !config.permissions?.read || canAny(config.permissions.read);
   const canCreate = !config.permissions?.create || canAny(config.permissions.create);
   const canUpdate = !config.permissions?.update || canAny(config.permissions.update);
   const canDelete = !config.permissions?.delete || canAny(config.permissions.delete);
+  const queryKey = queryKeyForAuthMasterEndpoint(config.endpoint);
 
   const query = useQuery<Record<string, unknown>[]>({
-    queryKey: queryKeyForAuthMasterEndpoint(config.endpoint),
+    queryKey,
     queryFn: queryFnForAuthMasterEndpoint(config.endpoint),
     enabled: canRead,
   });
@@ -592,28 +615,68 @@ export function RbmsTable({ config }: { config: RbmsConfig }) {
     if (!needle) return all;
     return all.filter((row) => JSON.stringify(row).toLowerCase().includes(needle));
   }, [query.data, search]);
+  const visibleRows = useMemo(() => {
+    const filtered = applyColumnFilters(rows, columnFilters, (row, key) => row[key]);
+    return applyColumnSort(filtered, columnSort, (row, key) => row[key]);
+  }, [columnFilters, columnSort, rows]);
+  const filterCount = activeFilterCount(columnFilters);
 
   const pagedRows = useMemo(() => {
     const start = (page - 1) * rowsPerPage;
-    return rows.slice(start, start + rowsPerPage);
-  }, [page, rows, rowsPerPage]);
+    return visibleRows.slice(start, start + rowsPerPage);
+  }, [page, rowsPerPage, visibleRows]);
 
   useEffect(() => {
     setPage(1);
-  }, [rowsPerPage, search]);
+  }, [columnFilters, columnSort, rowsPerPage, search]);
 
   useEffect(() => {
-    const maxPage = Math.max(1, Math.ceil(rows.length / rowsPerPage));
+    const maxPage = Math.max(1, Math.ceil(visibleRows.length / rowsPerPage));
     if (page > maxPage) setPage(maxPage);
-  }, [page, rows.length, rowsPerPage]);
+  }, [page, visibleRows.length, rowsPerPage]);
+
+  useEffect(() => {
+    if (!creating && !editing) return;
+    window.requestAnimationFrame(() => {
+      formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  }, [creating, editing]);
+
+  function upsertCachedRow(nextRow: Record<string, unknown>) {
+    qc.setQueryData<Record<string, unknown>[]>(queryKey, (current = []) => {
+      const rowId = String(nextRow[idField] ?? '');
+      if (!rowId) return current;
+      const index = current.findIndex((item) => String(item[idField]) === rowId);
+      if (index === -1) return [...current, nextRow];
+      return current.map((item, itemIndex) => (itemIndex === index ? { ...item, ...nextRow } : item));
+    });
+  }
+
+  function removeCachedRow(rowId: string) {
+    qc.setQueryData<Record<string, unknown>[]>(queryKey, (current = []) =>
+      current.filter((item) => String(item[idField]) !== rowId),
+    );
+  }
+
+  async function invalidateTableQueries() {
+    await qc.invalidateQueries({ queryKey });
+    if (config.endpoint === '/auth/master/modules') {
+      await qc.invalidateQueries({ queryKey: authMasterKeys.modules });
+    }
+  }
 
   async function save(row: Record<string, unknown> | null, body: Record<string, unknown>) {
     if ((row && !canUpdate) || (!row && !canCreate)) return;
     setSaving(true);
     try {
-      if (row) await updateMut.mutateAsync({ id: String(row[idField]), body });
-      else await createMut.mutateAsync(body);
-      await qc.invalidateQueries({ queryKey: ['rbms', config.endpoint] });
+      const response = row
+        ? await updateMut.mutateAsync({ id: String(row[idField]), body })
+        : await createMut.mutateAsync(body);
+      const saved = responseData(response);
+      if (saved && typeof saved === 'object' && !Array.isArray(saved)) {
+        upsertCachedRow(saved as Record<string, unknown>);
+      }
+      await invalidateTableQueries();
       setCreating(false);
       setEditing(null);
       toast({ title: t('rbms.saved', { title: config.title }) });
@@ -628,8 +691,10 @@ export function RbmsTable({ config }: { config: RbmsConfig }) {
     if (!canDelete) return;
     if (!confirm(t('rbms.deactivateConfirm', { title: config.title }))) return;
     try {
-      await deleteMut.mutateAsync(String(row[idField]));
-      await qc.invalidateQueries({ queryKey: ['rbms', config.endpoint] });
+      const rowId = String(row[idField]);
+      await deleteMut.mutateAsync(rowId);
+      removeCachedRow(rowId);
+      await invalidateTableQueries();
       toast({ title: t('rbms.deactivated', { title: config.title }) });
     } catch (error) {
       toast({ title: t('common.error'), description: apiErrorMessage(error), variant: 'destructive' });
@@ -643,16 +708,23 @@ export function RbmsTable({ config }: { config: RbmsConfig }) {
         <p className="text-muted-foreground text-sm mt-1">{config.description}</p>
       </div>
 
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div className="relative w-full sm:w-72">
+      <div className="flex flex-col gap-3 rounded-lg border bg-card p-3 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+        <div className="relative w-full sm:w-80">
           <Search className="absolute start-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input className="ps-8" placeholder={t('rbms.searchTitle', { title: config.title.toLowerCase() })} value={search} onChange={(event) => setSearch(event.target.value)} />
         </div>
-        {canCreate && (
-          <Button size="sm" className="w-full sm:w-auto" onClick={() => { setCreating(true); setEditing(null); }}>
-            <Plus className="me-1 h-4 w-4" /> {t('rbms.add')}
-          </Button>
-        )}
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          {filterCount > 0 && (
+            <Button type="button" size="sm" variant="outline" className="w-full sm:w-auto" onClick={() => setColumnFilters({})}>
+              <X className="me-1 h-4 w-4" /> Clear {filterCount} filter{filterCount === 1 ? '' : 's'}
+            </Button>
+          )}
+          {canCreate && (
+            <Button size="sm" className="w-full sm:w-auto" onClick={() => { setCreating(true); setEditing(null); }}>
+              <Plus className="me-1 h-4 w-4" /> {t('rbms.add')}
+            </Button>
+          )}
+        </div>
       </div>
 
       {!canRead && (
@@ -662,22 +734,45 @@ export function RbmsTable({ config }: { config: RbmsConfig }) {
       )}
 
       {(creating || editing) && (
-        <EntityForm config={config} row={editing} saving={saving} onCancel={() => { setCreating(false); setEditing(null); }} onSubmit={(body) => save(editing, body)} />
+        <div ref={formRef} className="scroll-mt-20 rounded-lg ring-2 ring-primary/10">
+          <EntityForm config={config} row={editing} saving={saving} onCancel={() => { setCreating(false); setEditing(null); }} onSubmit={(body) => save(editing, body)} />
+        </div>
       )}
 
       {canRead && (
         <>
-          <div className="hidden rounded-md border overflow-x-auto md:block">
+          <div className="hidden overflow-hidden rounded-lg border bg-card shadow-sm md:block">
+            <div className="flex items-center justify-between border-b bg-muted/20 px-4 py-3">
+              <div className="flex items-center gap-2 text-sm font-medium">
+                <SlidersHorizontal className="h-4 w-4 text-muted-foreground" />
+                <span>{config.title}</span>
+              </div>
+              <span className="text-xs text-muted-foreground">
+                Showing {visibleRows.length} of {rows.length} loaded records
+              </span>
+            </div>
+            <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="bg-muted/50">
+              <thead className="bg-muted/40">
                 <tr>
-                  {config.columns.map((column) => <th key={column.key} className="px-4 py-3 text-start font-medium text-muted-foreground">{t(`labels.${column.key}`, {}, column.label)}</th>)}
+                  {config.columns.map((column) => (
+                    <th key={column.key} className="align-top px-4 py-3 text-start font-medium text-muted-foreground">
+                      <ColumnHeader
+                        label={t(`labels.${column.key}`, {}, column.label)}
+                        filterValue={columnFilters[column.key] ?? ''}
+                        sortDirection={columnSort?.key === column.key ? columnSort.direction : undefined}
+                        onFilterChange={(value) => setColumnFilters((current) => ({ ...current, [column.key]: value }))}
+                        onSort={() => setColumnSort((current) => nextSort(current, column.key))}
+                      />
+                    </th>
+                  ))}
                   <th className="px-4 py-3 text-end font-medium text-muted-foreground">{t('common.actions')}</th>
                 </tr>
               </thead>
               <tbody>
                 {query.isLoading && <tr><td className="py-8 text-center" colSpan={config.columns.length + 1}><Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" /></td></tr>}
                 {!query.isLoading && rows.length === 0 && <tr><td className="py-8 text-center text-muted-foreground" colSpan={config.columns.length + 1}>{t('common.noRecords')}</td></tr>}
+                {!query.isLoading && rows.length > 0 && visibleRows.length === 0 && <tr><td className="py-8 text-center text-muted-foreground" colSpan={config.columns.length + 1}>No records match the active filters</td></tr>}
                 {!query.isLoading && pagedRows.map((row) => (
                   <tr key={String(row[idField])} className="border-t hover:bg-muted/30">
                     {config.columns.map((column) => (
@@ -695,6 +790,7 @@ export function RbmsTable({ config }: { config: RbmsConfig }) {
                 ))}
               </tbody>
             </table>
+            </div>
           </div>
 
           <div className="space-y-3 md:hidden">
@@ -703,7 +799,7 @@ export function RbmsTable({ config }: { config: RbmsConfig }) {
                 <Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" />
               </div>
             )}
-            {!query.isLoading && rows.length === 0 && (
+            {!query.isLoading && visibleRows.length === 0 && (
               <div className="rounded-md border bg-card px-4 py-8 text-center text-sm text-muted-foreground">
                 {t('common.noRecords')}
               </div>
@@ -738,7 +834,7 @@ export function RbmsTable({ config }: { config: RbmsConfig }) {
             ))}
           </div>
 
-          <PaginationControls page={page} pageSize={rowsPerPage} total={rows.length} onPageChange={setPage} />
+          <PaginationControls page={page} pageSize={rowsPerPage} total={visibleRows.length} onPageChange={setPage} />
         </>
       )}
     </div>

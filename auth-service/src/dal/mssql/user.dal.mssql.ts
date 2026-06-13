@@ -2,7 +2,7 @@ import { v4 as uuidv4 } from 'uuid';
 import type { ConnectionPool, IResult } from 'mssql';
 import { IUserDAL } from '../interfaces/user.dal.interface';
 import { IUser, CreateUserDTO, UpdateUserDTO, UserFilter } from '../../modules/user/user.types';
-import { PaginatedResult } from '@prasad-rtns/shared';
+import { PaginatedResult } from '@rtns/core';
 import { parsePermissions } from '../common/rbms.mapper';
 
 /**
@@ -129,6 +129,8 @@ export class MssqlUserDAL implements IUserDAL {
       .input('departmentId', data.departmentId)
       .input('designationId', data.designationId)
       .input('userCategory', data.userCategory ?? 'internal')
+      .input('isEmailVerified', data.isEmailVerified ?? false)
+      .input('twoFactorEnabled', data.twoFactorEnabled ?? false)
       .input('createdBy', data.createdBy ?? null)
       .input('now', now)
       .query(`
@@ -136,7 +138,7 @@ export class MssqlUserDAL implements IUserDAL {
                            role_id, company_id, department_id, designation_id, user_category, status, is_email_verified,
                            failed_login_attempts, two_factor_enabled, created_by, created_at, updated_at)
         VALUES (@id, @username, @email, @password, @firstName, @lastName, @phone, @avatar,
-                @roleId, @companyId, @departmentId, @designationId, @userCategory, 'active', 0, 0, 0, @createdBy, @now, @now)
+                @roleId, @companyId, @departmentId, @designationId, @userCategory, 'active', @isEmailVerified, 0, @twoFactorEnabled, @createdBy, @now, @now)
       `);
     const user = await this.findById(id);
     return user!;
@@ -148,7 +150,7 @@ export class MssqlUserDAL implements IUserDAL {
     const fieldMap: Record<string, string> = {
       firstName: 'first_name', middleName: 'middle_name', lastName: 'last_name', phone: 'phone', avatar: 'avatar',
       roleId: 'role_id', companyId: 'company_id', departmentId: 'department_id', designationId: 'designation_id',
-      status: 'status', password: 'password', isEmailVerified: 'is_email_verified',
+      status: 'status', password: 'password', isEmailVerified: 'is_email_verified', twoFactorEnabled: 'two_factor_enabled',
       emailVerificationToken: 'email_verification_token', passwordResetToken: 'password_reset_token',
       passwordResetExpires: 'password_reset_expires',
       failedLoginAttempts: 'failed_login_attempts', lockUntil: 'lock_until',

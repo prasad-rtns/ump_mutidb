@@ -278,7 +278,7 @@ CREATE TABLE IF NOT EXISTS categories (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name VARCHAR(200) NOT NULL,
     code VARCHAR(50) NOT NULL UNIQUE,
-    parent_id UUID,
+    category_type VARCHAR(50) DEFAULT 'admin category' NOT NULL,
     description TEXT,
     icon VARCHAR(100),
     sort_order INTEGER DEFAULT 0,
@@ -386,13 +386,101 @@ INSERT INTO service_types (name, code, description, route_link, icon) VALUES
     ('Master Data Services', 'MASTER_DATA_SERVICES', 'Reference data and platform configuration services', '/services/master-data', 'layers')
 ON CONFLICT (code) DO NOTHING;
 
+-- Seed admin categories used by configurable settings
+INSERT INTO categories (name, code, category_type, description, icon, sort_order, is_active) VALUES
+    ('General', 'general', 'admin category', 'General application settings', 'settings', 10, TRUE),
+    ('External URL', 'external-url', 'admin category', 'External integration URL settings', 'globe', 20, TRUE),
+    ('Stub URL', 'stub-url', 'admin category', 'Stub integration URL settings', 'globe', 30, TRUE),
+    ('UI', 'ui', 'admin category', 'User interface settings', 'settings', 40, TRUE),
+    ('UI Theme', 'ui-theme', 'admin category', 'Theme and color settings', 'palette', 50, TRUE),
+    ('Security', 'security', 'admin category', 'Security settings', 'shield', 60, TRUE),
+    ('Email', 'email', 'admin category', 'Email settings', 'mail', 70, TRUE),
+    ('Storage', 'storage', 'admin category', 'Storage settings', 'database', 80, TRUE),
+    ('Integration', 'integration', 'admin category', 'Integration settings', 'layers', 90, TRUE)
+ON CONFLICT (code) DO NOTHING;
+
 -- Seed system settings
 INSERT INTO system_settings (key, value, type, description, is_public, category) VALUES
     ('app.name', 'User Management Platform', 'string', 'Application name', TRUE, 'general'),
     ('app.version', '1.0.0', 'string', 'Application version', TRUE, 'general'),
-    ('auth.max_login_attempts', '5', 'number', 'Max failed login attempts before lockout', FALSE, 'security'),
-    ('auth.lock_duration_minutes', '30', 'number', 'Account lock duration in minutes', FALSE, 'security'),
+    ('auth.max_login_attempts', '5', 'integer', 'Max failed login attempts before lockout', FALSE, 'security'),
+    ('auth.lock_duration_minutes', '30', 'integer', 'Account lock duration in minutes', FALSE, 'security'),
     ('email.from', 'noreply@ump-platform.com', 'string', 'Default sender email', FALSE, 'email'),
     ('storage.provider', 'local', 'string', 'Default storage provider', FALSE, 'storage'),
-    ('ui.grid.rowsPerPage', '20', 'number', 'Rows shown per page in all frontend grids and tables', TRUE, 'ui')
+    ('ui.grid.rowsPerPage', '20', 'integer', 'Rows shown per page in all frontend grids and tables', TRUE, 'ui'),
+    ('ui.theme.background', '#F2F5F4', 'color', 'Application page background color', TRUE, 'ui-theme'),
+    ('ui.theme.foreground', '#173531', 'color', 'Application primary text color', TRUE, 'ui-theme'),
+    ('ui.theme.card', '#FFFFFF', 'color', 'Card and popover background color', TRUE, 'ui-theme'),
+    ('ui.theme.cardForeground', '#173531', 'color', 'Card and popover text color', TRUE, 'ui-theme'),
+    ('ui.theme.primary', '#0F7E6D', 'color', 'Primary action color', TRUE, 'ui-theme'),
+    ('ui.theme.primaryForeground', '#FFFFFF', 'color', 'Primary action text color', TRUE, 'ui-theme'),
+    ('ui.theme.border', '#C2D5D2', 'color', 'Border and input color', TRUE, 'ui-theme'),
+    ('ui.theme.sidebar.background', '#1A2322', 'color', 'Left menu background color', TRUE, 'ui-theme'),
+    ('ui.theme.sidebar.foreground', '#E3E8E8', 'color', 'Left menu text color', TRUE, 'ui-theme'),
+    ('ui.theme.sidebar.active', '#0E7968', 'color', 'Left menu active item color', TRUE, 'ui-theme'),
+    ('ui.theme.sidebar.activeForeground', '#FFFFFF', 'color', 'Left menu active item text color', TRUE, 'ui-theme'),
+    ('ui.theme.sidebar.accent', '#263332', 'color', 'Left menu hover color', TRUE, 'ui-theme'),
+    ('ui.theme.sidebar.accentForeground', '#E3E8E8', 'color', 'Left menu hover text color', TRUE, 'ui-theme'),
+    ('ui.theme.footer.background', '#FFFFFF', 'color', 'Footer background color', TRUE, 'ui-theme'),
+    ('ui.theme.footer.foreground', '#497970', 'color', 'Footer text color', TRUE, 'ui-theme'),
+    ('external.apim.devportalUrl', 'https://localhost:9443/devportal', 'url', 'External API manager developer portal URL', TRUE, 'external-url'),
+    ('stub.userProfileUrl', 'http://localhost:8083', 'url', 'Stub endpoint for user profile integration', FALSE, 'stub-url')
 ON CONFLICT (key) DO NOTHING;
+
+-- Document service database
+\c ump_documents;
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+DO $$
+BEGIN
+    CREATE TYPE document_status AS ENUM ('pending', 'approved', 'rejected', 'archived');
+EXCEPTION
+    WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$
+BEGIN
+    CREATE TYPE storage_provider AS ENUM ('s3', 'cloudinary', 'local');
+EXCEPTION
+    WHEN duplicate_object THEN NULL;
+END $$;
+
+CREATE TABLE IF NOT EXISTS documents (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name VARCHAR(255) NOT NULL,
+    original_name VARCHAR(255) NOT NULL,
+    mime_type VARCHAR(255) NOT NULL,
+    size INTEGER NOT NULL,
+    url TEXT NOT NULL,
+    key TEXT NOT NULL,
+    provider storage_provider NOT NULL,
+    public_id VARCHAR(255),
+    uploaded_by VARCHAR(255) NOT NULL,
+    entity_type VARCHAR(100),
+    entity_id VARCHAR(255),
+    folder VARCHAR(255),
+    tags JSONB DEFAULT '[]'::jsonb,
+    metadata JSONB,
+    status document_status DEFAULT 'pending' NOT NULL,
+    is_deleted BOOLEAN DEFAULT FALSE NOT NULL,
+    deleted_at TIMESTAMP,
+    deleted_by VARCHAR(255),
+    created_by VARCHAR(255),
+    updated_by VARCHAR(255),
+    created_at TIMESTAMP DEFAULT NOW() NOT NULL,
+    updated_at TIMESTAMP DEFAULT NOW() NOT NULL
+);
+
+ALTER TABLE documents
+    ADD COLUMN IF NOT EXISTS created_by VARCHAR(255),
+    ADD COLUMN IF NOT EXISTS updated_by VARCHAR(255);
+
+CREATE UNIQUE INDEX IF NOT EXISTS documents_key_idx ON documents(key);
+CREATE INDEX IF NOT EXISTS documents_uploaded_by_idx ON documents(uploaded_by);
+CREATE INDEX IF NOT EXISTS documents_entity_idx ON documents(entity_type, entity_id);
+CREATE INDEX IF NOT EXISTS documents_status_idx ON documents(status);
+CREATE INDEX IF NOT EXISTS documents_provider_idx ON documents(provider);
+CREATE INDEX IF NOT EXISTS documents_is_deleted_idx ON documents(is_deleted);
+CREATE INDEX IF NOT EXISTS documents_created_by_idx ON documents(created_by);
+CREATE INDEX IF NOT EXISTS documents_updated_by_idx ON documents(updated_by);
+CREATE INDEX IF NOT EXISTS documents_created_at_idx ON documents(created_at);

@@ -2,7 +2,7 @@ import { v4 as uuidv4 } from 'uuid';
 import type { Collection } from 'mongodb';
 import { IUserDAL } from '../interfaces/user.dal.interface';
 import { IUser, CreateUserDTO, UpdateUserDTO, UserFilter } from '../../modules/user/user.types';
-import { PaginatedResult } from '@prasad-rtns/shared';
+import { PaginatedResult } from '@rtns/core';
 import { MongoCollections, MongoUser } from '../../schemas/mongo.schema';
 
 export class MongoUserDAL implements IUserDAL {
@@ -99,9 +99,9 @@ export class MongoUserDAL implements IUserDAL {
       designationId: data.designationId,
       userCategory: data.userCategory ?? 'internal',
       status: 'active' as const,
-      isEmailVerified: false,
+      isEmailVerified: data.isEmailVerified ?? false,
       failedLoginAttempts: 0,
-      twoFactorEnabled: false,
+      twoFactorEnabled: data.twoFactorEnabled ?? false,
       createdBy: data.createdBy ?? null,
       updatedBy: null,
       createdAt: now,

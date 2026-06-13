@@ -1,9 +1,9 @@
 import bcrypt from 'bcryptjs';
 import { v4 as uuidv4 } from 'uuid';
 import { DALFactory, DALBundle }    from '../../dal/dal.factory';
-import { JwtUtil }                   from '@prasad-rtns/shared';
-import { CacheService }              from '@prasad-rtns/shared';
-import { DatabaseType, JwtPayload }  from '@prasad-rtns/shared';
+import { JwtUtil }                   from '@rtns/core';
+import { CacheService }              from '@rtns/core';
+import { DatabaseType, JwtPayload }  from '@rtns/core';
 import { LoginInput, RegisterInput, LoginResult } from './auth.types';
 import { IUser } from '../user/user.types';
 import logger                        from '../../database/logger';

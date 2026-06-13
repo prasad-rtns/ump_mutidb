@@ -1,8 +1,8 @@
 import { Request, Response } from 'express';
 import { validationResult } from 'express-validator';
 import { UserService }  from './user.service';
-import { ResponseUtil } from '@prasad-rtns/shared';
-import { DatabaseType } from '@prasad-rtns/shared';
+import { ResponseUtil } from '@rtns/core';
+import { DatabaseType } from '@rtns/core';
 import { UserFilter }   from './user.types';
 
 const dbType = (req: Request): DatabaseType =>

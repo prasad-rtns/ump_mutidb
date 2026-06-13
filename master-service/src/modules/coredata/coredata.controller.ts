@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { CountryService, StateService, CityService, CategoryService, TagService, DocumentTypeService, SettingsService, ServiceTypeService } from './coredata.service';
-import { ResponseUtil } from '@prasad-rtns/shared';
-import { DatabaseType } from '@prasad-rtns/shared';
+import { ResponseUtil } from '@rtns/core';
+import { DatabaseType } from '@rtns/core';
 
 const db = (req: Request): DatabaseType =>
   (req.dbType as DatabaseType) || (process.env.DEFAULT_DB_TYPE as DatabaseType) || 'postgres';
@@ -39,7 +39,7 @@ export const CityController = {
 };
 
 export const CategoryController = {
-  async list(req: Request, res: Response) { return ResponseUtil.success(res, await (await CategoryService.create(db(req))).listAll(req.query.search as string)); },
+  async list(req: Request, res: Response) { return ResponseUtil.success(res, await (await CategoryService.create(db(req))).listAll(req.query.search as string, req.query.categoryType as string)); },
   async getById(req: Request, res: Response) { return ResponseUtil.success(res, await (await CategoryService.create(db(req))).getById(req.params.id)); },
   async create(req: Request, res: Response) { return ResponseUtil.created(res, await (await CategoryService.create(db(req))).create(req.body)); },
   async update(req: Request, res: Response) { return ResponseUtil.success(res, await (await CategoryService.create(db(req))).update(req.params.id, req.body)); },
@@ -62,6 +62,7 @@ export const SettingsController = {
   async listPublic(req: Request, res: Response) { return ResponseUtil.success(res, await (await SettingsService.create(db(req))).getPublicSettings()); },
   async listAll(req: Request, res: Response) { return ResponseUtil.success(res, await (await SettingsService.create(db(req))).getAllSettings()); },
   async upsert(req: Request, res: Response) { return ResponseUtil.success(res, await (await SettingsService.create(db(req))).upsert(req.body)); },
+  async update(req: Request, res: Response) { return ResponseUtil.success(res, await (await SettingsService.create(db(req))).upsert({ ...req.body, key: req.params.key })); },
   async remove(req: Request, res: Response) { return ResponseUtil.success(res, await (await SettingsService.create(db(req))).delete(req.params.key)); },
 };
 

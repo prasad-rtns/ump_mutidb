@@ -6,7 +6,7 @@ import helmet from 'helmet';
 import http from 'http';
 import app from './app';
 import { getMysqlPool, getMongoClient, getMssqlPool, getOraclePool, getPgPool, closeAllPools } from './database/adapters/db.connection';
-import { DatabaseType, RedisClient } from '@prasad-rtns/shared';
+import { DatabaseType, RedisClient } from '@rtns/core';
 import logger from './database/logger';
 
 const PORT = parseInt(process.env.PORT || '6001');

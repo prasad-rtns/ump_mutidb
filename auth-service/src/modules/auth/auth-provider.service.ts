@@ -2,9 +2,9 @@ import bcrypt from 'bcryptjs';
 import https from 'node:https';
 import { createRemoteJWKSet, jwtVerify, JWTPayload } from 'jose';
 import { v4 as uuidv4 } from 'uuid';
-import { JwtPayload } from '@prasad-rtns/shared';
+import { JwtPayload } from '@rtns/core';
 import { DALBundle, DALFactory } from '../../dal/dal.factory';
-import { DatabaseType } from '@prasad-rtns/shared';
+import { DatabaseType } from '@rtns/core';
 import { IUser } from '../user/user.types';
 import { RegisterInput } from './auth.types';
 

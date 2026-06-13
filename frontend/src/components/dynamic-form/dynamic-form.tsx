@@ -23,9 +23,10 @@ export function DynamicForm({ fields, defaultValues = {}, onSubmit, isLoading, s
   const { t } = useTranslation();
   const visibleFields = fields.filter((field) => !field.hidden);
 
-  const { register, handleSubmit, reset, formState: { errors } } = useForm<Record<string, unknown>>({
+  const { register, handleSubmit, reset, watch, formState: { errors } } = useForm<Record<string, unknown>>({
     defaultValues: Object.fromEntries(visibleFields.map((field) => [field.name, defaultValues[field.name] ?? field.default ?? ''])),
   });
+  const selectedSettingType = String(watch('type') ?? '').toLowerCase();
 
   useEffect(() => {
     reset(Object.fromEntries(visibleFields.map((field) => [field.name, defaultValues[field.name] ?? field.default ?? ''])));
@@ -37,19 +38,30 @@ export function DynamicForm({ fields, defaultValues = {}, onSubmit, isLoading, s
     return translated === `labels.${field.name}` ? field.label : translated;
   }
 
+  function effectiveFieldType(field: FieldMeta) {
+    if (field.name !== 'value' || !visibleFields.some((item) => item.name === 'type')) return field.type;
+    if (selectedSettingType === 'boolean') return 'setting-boolean';
+    if (selectedSettingType === 'integer' || selectedSettingType === 'number') return 'number';
+    if (selectedSettingType === 'url') return 'url';
+    if (selectedSettingType === 'json') return 'textarea';
+    if (selectedSettingType === 'color') return 'color';
+    return selectedSettingType === 'text' || selectedSettingType === 'string' ? 'text' : field.type;
+  }
+
   return (
     <form onSubmit={handleSubmit((data) => onSubmit(data))} className="space-y-4">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {visibleFields.map((field) => {
           const label = fieldLabel(field);
+          const inputType = effectiveFieldType(field);
           return (
-            <div key={field.name} className={cn('space-y-1', field.type === 'textarea' ? 'sm:col-span-2' : '')}>
+            <div key={field.name} className={cn('space-y-1', inputType === 'textarea' ? 'sm:col-span-2' : '')}>
               <Label htmlFor={field.name}>
                 {label}
                 {field.required && <span className="text-destructive ml-1">*</span>}
               </Label>
 
-              {field.type === 'textarea' && (
+              {inputType === 'textarea' && (
                 <textarea
                   id={field.name}
                   className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
@@ -58,14 +70,25 @@ export function DynamicForm({ fields, defaultValues = {}, onSubmit, isLoading, s
                 />
               )}
 
-              {field.type === 'boolean' && (
+              {inputType === 'boolean' && (
                 <div className="flex items-center gap-2 h-10">
                   <input type="checkbox" id={field.name} className="h-4 w-4 rounded border-input" {...register(field.name)} />
                   <span className="text-sm text-muted-foreground">{t('common.enable')}</span>
                 </div>
               )}
 
-              {field.type === 'select' && (
+              {inputType === 'setting-boolean' && (
+                <select
+                  id={field.name}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  {...register(field.name, { required: field.required ? t('common.required', { name: label }) : false })}
+                >
+                  <option value="true">True</option>
+                  <option value="false">False</option>
+                </select>
+              )}
+
+              {inputType === 'select' && (
                 <select
                   id={field.name}
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -78,17 +101,17 @@ export function DynamicForm({ fields, defaultValues = {}, onSubmit, isLoading, s
                 </select>
               )}
 
-              {field.type === 'color' && (
+              {inputType === 'color' && (
                 <div className="flex items-center gap-2">
                   <input type="color" id={field.name} className="h-10 w-14 rounded border" {...register(field.name)} />
                   <Input placeholder="#ffffff" {...register(field.name)} className="flex-1" />
                 </div>
               )}
 
-              {!['textarea', 'boolean', 'select', 'color'].includes(field.type) && (
+              {!['textarea', 'boolean', 'setting-boolean', 'select', 'color'].includes(inputType) && (
                 <Input
                   id={field.name}
-                  type={field.type === 'number' ? 'number' : field.type === 'email' ? 'email' : field.type === 'url' ? 'url' : 'text'}
+                  type={inputType === 'number' ? 'number' : inputType === 'email' ? 'email' : inputType === 'url' ? 'url' : 'text'}
                   placeholder={field.placeholder}
                   maxLength={field.maxLength}
                   readOnly={field.readOnly}

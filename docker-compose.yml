@@ -39,7 +39,8 @@ services:
 
   auth-service:
     build:
-      context: ./auth-service
+      context: .
+      dockerfile: auth-service/Dockerfile
     container_name: ump_auth_service
     restart: unless-stopped
     env_file: ./auth-service/.env
@@ -76,7 +77,8 @@ services:
 
   master-service:
     build:
-      context: ./master-service
+      context: .
+      dockerfile: master-service/Dockerfile
     container_name: ump_master_service
     restart: unless-stopped
     env_file: ./master-service/.env
@@ -104,7 +106,8 @@ services:
 
   document-service:
     build:
-      context: ./document-service
+      context: .
+      dockerfile: document-service/Dockerfile
     container_name: ump_document_service
     restart: unless-stopped
     env_file: ./document-service/.env
@@ -138,6 +141,9 @@ services:
         AUTH_SERVICE_URL: http://auth-service:6001/api/v1
         MASTER_SERVICE_URL: http://master-service:6002/api/v1
         DOCUMENT_SERVICE_URL: http://document-service:6003/api/v1
+        NEXT_PUBLIC_APP_FOOTER_TEXT: ${NEXT_PUBLIC_APP_FOOTER_TEXT:-User Management Platform}
+        NEXT_PUBLIC_APP_FOOTER_VERSION: ${NEXT_PUBLIC_APP_FOOTER_VERSION:-1.0.0}
+        NEXT_PUBLIC_APP_FOOTER_RIGHT_TEXT: ${NEXT_PUBLIC_APP_FOOTER_RIGHT_TEXT:-}
     container_name: ump_frontend
     restart: unless-stopped
     environment:

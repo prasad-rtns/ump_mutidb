@@ -133,7 +133,9 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
       return { ...node, children: visibleChildren };
     }
 
-    return buildTree(effectiveModules.filter((module) => module.isActive !== false))
+    return buildTree(effectiveModules.filter((module) =>
+      module.isActive !== false && (module.moduleType ?? 'admin') === 'admin',
+    ))
       .flatMap((node) => {
         const visible = filterNode(node);
         return visible ? [visible] : [];

@@ -13,6 +13,8 @@ export interface RegisterInput {
   departmentId: string;
   designationId: string;
   userCategory?: IUser['userCategory'];
+  isEmailVerified?: boolean;
+  twoFactorEnabled?: boolean;
 }
 
 export interface LoginInput {

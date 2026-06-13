@@ -4,12 +4,7 @@ import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { useState } from 'react';
 import { Toaster } from '@/components/ui/toaster';
 import { I18nProvider } from '@/i18n';
-import { usePublicSettings } from '@/hooks/use-public-settings';
-
-function SettingsBootstrap() {
-  usePublicSettings();
-  return null;
-}
+import { ThemeSettings } from '@/components/theme/theme-settings';
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(
@@ -19,7 +14,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <I18nProvider>
       <QueryClientProvider client={queryClient}>
-        <SettingsBootstrap />
+        <ThemeSettings />
         {children}
         <Toaster />
         <ReactQueryDevtools initialIsOpen={false} />

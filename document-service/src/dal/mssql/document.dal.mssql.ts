@@ -7,7 +7,7 @@ import {
   DocumentFilter,
   UpdateDocumentStatusDTO,
 } from '../../modules/document_upload/document.types';
-import { PaginatedResult } from '@prasad-rtns/shared';
+import { PaginatedResult } from '@rtns/core';
 
 const parseJson = <T>(value: unknown, fallback: T): T => {
   if (value == null) return fallback;

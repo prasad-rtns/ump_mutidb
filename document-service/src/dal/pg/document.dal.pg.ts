@@ -9,7 +9,7 @@ import {
   DocumentFilter,
   UpdateDocumentStatusDTO,
 } from '../../modules/document_upload/document.types';
-import { PaginatedResult } from '@prasad-rtns/shared';
+import { PaginatedResult } from '@rtns/core';
 
 type PgDB = NodePgDatabase<Record<string, never>>;
 
@@ -25,6 +25,8 @@ export class PgDocumentDAL implements IDocumentDAL {
         ...data,
         status: 'pending',
         isDeleted: false,
+        createdBy: data.uploadedBy,
+        updatedBy: data.uploadedBy,
         createdAt: now,
         updatedAt: now,
       })
@@ -43,6 +45,8 @@ export class PgDocumentDAL implements IDocumentDAL {
           ...item,
           status: 'pending' as const,
           isDeleted: false,
+          createdBy: item.uploadedBy,
+          updatedBy: item.uploadedBy,
           createdAt: now,
           updatedAt: now,
         }))

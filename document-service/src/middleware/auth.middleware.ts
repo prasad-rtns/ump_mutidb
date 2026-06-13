@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import axios, { AxiosError } from 'axios';
-import { JwtPayload, ResponseUtil } from '@prasad-rtns/shared';
+import { JwtPayload, ResponseUtil } from '@rtns/core';
 
 const AUTH_SERVICE_URL = process.env.AUTH_SERVICE_URL || 'http://auth-service:6001/api/v1';
 
